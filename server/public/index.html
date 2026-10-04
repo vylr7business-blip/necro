@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Every hour, $NECRO holders vote on ten dead Robinhood Chain coins. At the top of the hour, the trading fees buy the winner back from the grave.">
+<meta name="theme-color" content="#08080c">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Necro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Silkscreen&display=swap">
+<style>
+/* Layout: one site, five rooms (Séance, Graveyard, Coin record, Pump log, How it works) behind a sticky glass nav. Framed pixel graveyard hero on the Séance; every other page opens with a serif title and a hairline stat strip. Single committed night look. */
+:root{
+  --bg:#08080c;
+  --panel:rgba(14,14,22,.72);
+  --panel-2:rgba(20,19,30,.78);
+  --line:#1c1e28;
+  --line-hi:#2a2d3a;
+  --ink:#efeef4;
+  --soft:#c3c2cf;
+  --mute:#8b8a9b;
+  --faint:#555565;
+  --candle:#eab464;
+  --ghost:#a99ddc;
+  --rise:#8ccc9f;
+  --dead:#dc7d73;
+  --f-serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --f-pixel:"Silkscreen","Courier New",monospace;
+  --f-body:"Geist",ui-sans-serif,system-ui,sans-serif;
+  --f-num:"Geist Mono",ui-monospace,monospace;
+  --r:18px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:20px;padding-block:0 40px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.05;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.wrap{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+#sky{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;image-rendering:pixelated;pointer-events:none;display:block}
+.panel,.card,.strip,.band,.seg,.search,.links{backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:inherit}
+:focus-visible{outline:1px solid var(--candle);outline-offset:3px;border-radius:6px}
+.mono{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.tick{font-family:var(--f-pixel);font-size:15px;letter-spacing:.02em}
+.sub{font-size:13px;color:var(--mute);margin:0}
+.label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.up{color:var(--rise)}.down{color:var(--dead)}.gold{color:var(--candle)}
+
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;margin-inline:-20px;padding:14px 20px;
+  background:rgba(8,8,12,.72);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(28,30,40,.7)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.mark{display:flex;align-items:center;gap:10px;font-family:var(--f-pixel);font-size:14px;letter-spacing:.06em;text-decoration:none}
+.mark canvas{width:16px;height:20px;image-rendering:pixelated}
+.links{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:11px;background:rgba(14,15,21,.6)}
+.links a{font-size:13px;color:var(--mute);text-decoration:none;padding:6px 12px;border-radius:8px;transition:color .15s,background .15s}
+.links a:hover{color:var(--ink)}
+.links a[aria-current="page"]{color:var(--ink);background:var(--line-hi)}
+.navr{display:flex;align-items:center;gap:14px}
+.live{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--rise);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(140,204,159,.5)}50%{box-shadow:0 0 0 5px rgba(140,204,159,0)}}
+.btn{font-size:13px;font-weight:500;padding:9px 16px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform .15s,background .2s,border-color .2s,color .2s;white-space:nowrap}
+.btn.primary{background:var(--candle);color:#1b140a}
+.btn.primary:hover{transform:translateY(-1px);background:#f1c27c}
+.btn.line{border:1px solid var(--line-hi);color:var(--ink)}
+.btn.line:hover{border-color:var(--mute)}
+.btn.glass{border:1px solid rgba(239,238,244,.18);background:rgba(8,8,12,.35);backdrop-filter:blur(6px)}
+.btn.lg{font-size:14px;padding:12px 20px;border-radius:11px}
+
+/* page shell */
+main[data-page]{animation:enter .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes enter{from{opacity:.0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ptitle{padding-block:72px 36px;display:grid;gap:14px}
+.ptitle .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+h1{font-family:var(--f-serif);font-weight:400;font-size:clamp(46px,7vw,88px);line-height:.95;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h1 i{color:var(--candle)}
+.ptitle p{margin:0;max-width:56ch;color:var(--soft);font-size:17px;font-weight:300}
+h2{font-family:var(--f-serif);font-weight:400;font-size:clamp(32px,4vw,44px);line-height:1;margin:0;letter-spacing:-.01em}
+h3{font-family:var(--f-serif);font-weight:400;font-size:28px;margin:0;line-height:1.1}
+section.block{margin-top:96px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:18px;margin-bottom:22px}
+.head p{margin:8px 0 0;color:var(--mute)}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,var(--panel-2),var(--panel));overflow:hidden}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:26px;min-width:0}
+
+/* stat strip */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.strip > div{padding:22px 24px;display:grid;gap:6px;min-width:0}
+.strip > div + div{border-left:1px solid var(--line)}
+.strip b{font-family:var(--f-num);font-weight:400;font-size:28px;letter-spacing:-.02em;line-height:1.1}
+
+/* segmented + chips */
+.seg{display:flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.seg button{font-size:13px;color:var(--mute);padding:6px 12px;border-radius:7px;transition:color .15s,background .15s}
+.seg button[aria-pressed="true"]{background:var(--line-hi);color:var(--ink)}
+.seg button:hover{color:var(--ink)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid;white-space:nowrap}
+.chip.lead{color:var(--candle);border-color:rgba(234,180,100,.35)}
+.chip.mine{color:var(--ghost);border-color:rgba(169,157,220,.35)}
+.chip.ok{color:var(--rise);border-color:rgba(140,204,159,.3)}
+.chip.no{color:var(--dead);border-color:rgba(220,125,115,.3)}
+.chip.wait{color:var(--mute);border-color:var(--line-hi)}
+
+/* hero */
+.hero{position:relative;border:1px solid var(--line);border-radius:22px;overflow:hidden;height:clamp(460px,48vw,560px);background:#0b0a14;margin-top:24px;
+  box-shadow:0 40px 120px -40px rgba(169,157,220,.18)}
+#scene{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;display:block}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(8,8,12,.85) 0%,rgba(8,8,12,.45) 42%,rgba(8,8,12,0) 70%),linear-gradient(0deg,rgba(8,8,12,.7) 0%,rgba(8,8,12,0) 40%)}
+.copy{position:absolute;z-index:2;left:clamp(22px,4vw,52px);bottom:clamp(24px,4vw,48px);right:22px;max-width:580px;display:grid;gap:18px}
+.copy .eyebrow{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.pill{font-family:var(--f-pixel);letter-spacing:.06em;font-size:10px;color:#1b140a;background:var(--candle);padding:3px 7px;border-radius:4px}
+.copy h1{font-size:clamp(46px,7.6vw,96px)}
+.copy p{margin:0;max-width:44ch;color:var(--soft);font-size:16px;font-weight:300}
+.ctas{display:flex;flex-wrap:wrap;gap:10px}
+
+/* console */
+.console{margin-top:16px;display:grid;grid-template-columns:1.25fr 1fr 1fr}
+.cell{padding:24px 26px;display:grid;gap:10px;align-content:start;min-width:0}
+.cell + .cell{border-left:1px solid var(--line)}
+.clock{font-family:var(--f-num);font-size:clamp(44px,5.4vw,62px);line-height:1;letter-spacing:-.03em}
+.clock span{color:var(--faint)}
+.track{height:4px;background:var(--line);border-radius:4px;position:relative}
+.track i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--ghost),var(--candle));border-radius:4px}
+.track b{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--mute);left:83.33%}
+.hint{font-size:12px;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
+.big{font-family:var(--f-num);font-size:30px;line-height:1.1;letter-spacing:-.02em}
+.leader{display:flex;align-items:center;gap:12px;cursor:pointer}
+.leader canvas{width:30px;height:33px;image-rendering:pixelated;flex:none}
+.spark{width:100%;height:38px;display:block}
+
+/* ballot rows */
+.row{display:grid;grid-template-columns:30px 36px minmax(0,1fr) 110px 170px 88px;align-items:center;gap:18px;padding:16px 22px;transition:background .2s;cursor:pointer}
+.row + .row{border-top:1px solid var(--line)}
+.row:hover{background:rgba(42,45,58,.25)}
+.row:hover .tick{color:var(--candle)}
+.rank{font-family:var(--f-num);color:var(--faint);font-size:13px}
+.row canvas{width:30px;height:33px;image-rendering:pixelated}
+.who{min-width:0;display:grid;gap:3px}
+.who .tick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;transition:color .15s}
+.meta{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta i{font-style:normal;color:var(--dead)}
+.fell{text-align:right;display:grid;gap:1px}
+.fell b{font-family:var(--f-num);font-weight:400;font-size:14px;color:var(--dead)}
+.fell span{font-size:12px;color:var(--faint);font-family:var(--f-num)}
+.tally{display:grid;gap:7px}
+.bar{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ghost);border-radius:3px;transition:width .5s ease}
+.row.lead .bar i{background:var(--candle)}
+.tally span{font-family:var(--f-num);font-size:12px;color:var(--mute)}
+.vote{justify-self:end;font-size:13px;font-weight:500;padding:8px 16px;border-radius:9px;border:1px solid var(--line-hi);transition:border-color .2s,background .2s,color .2s}
+.vote:hover{border-color:var(--candle);color:var(--candle)}
+.vote[aria-pressed="true"]{background:var(--ghost);border-color:var(--ghost);color:#120f1e}
+
+/* log list */
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 22px}
+.log li + li{border-top:1px solid var(--line)}
+.log time{font-family:var(--f-num);font-size:12px;color:var(--faint)}
+.log .what{min-width:0;display:grid}
+.log .what small{color:var(--mute);font-size:12px}
+.log .mv{font-family:var(--f-num);color:var(--rise);font-size:15px}
+.log .mv.down{color:var(--dead)}
+
+.band{margin-top:96px;padding:48px clamp(24px,5vw,56px);border:1px solid var(--line);border-radius:22px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:24px;
+  background:radial-gradient(600px 240px at 90% 0%,rgba(234,180,100,.10),transparent 70%),var(--panel)}
+.band h2{max-width:18ch}
+
+/* coin page */
+.back{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--mute);text-decoration:none;margin-top:36px}
+.back:hover{color:var(--ink)}
+.record{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;align-items:center;padding-block:32px 40px}
+.bigstone{width:240px;height:264px;image-rendering:pixelated;max-width:100%}
+.epitaph{display:grid;gap:14px}
+.epitaph .rip{font-family:var(--f-pixel);font-size:11px;letter-spacing:.2em;color:var(--faint)}
+.epitaph h1{font-family:var(--f-pixel);font-size:clamp(40px,6vw,72px);letter-spacing:-.01em}
+.epitaph blockquote{margin:0;font-family:var(--f-serif);font-style:italic;font-size:24px;color:var(--soft);line-height:1.3;max-width:34ch}
+.epitaph .acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+.cgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-top:16px}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--f-num);font-size:11px;fill:var(--faint)}
+.chart .ann{fill:var(--mute)}
+.facts{display:grid;gap:0;margin:16px 0 0;padding:0}
+.facts > div{display:flex;justify-content:space-between;gap:12px;padding-block:11px;border-top:1px solid var(--line);font-size:14px}
+.facts dt{color:var(--mute)}.facts dd{margin:0;font-family:var(--f-num);text-align:right}
+.score{display:grid;gap:14px;margin-top:18px}
+.score > div{display:grid;grid-template-columns:120px minmax(0,1fr) 44px;gap:12px;align-items:center;font-size:13px}
+.score span:first-child{color:var(--mute)}
+.score .bar{height:6px}
+.score .bar i{background:var(--rise)}
+.score b{font-family:var(--f-num);font-weight:400;text-align:right}
+.scoreTotal{display:flex;align-items:baseline;gap:10px;margin-top:6px}
+.scoreTotal b{font-family:var(--f-num);font-size:44px;font-weight:400;letter-spacing:-.03em;color:var(--rise)}
+.sim{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:16px;border-top:1px solid var(--line)}
+.sim > div{padding:18px 0;display:grid;gap:4px}
+.sim > div + div{padding-left:20px;border-left:1px solid var(--line)}
+.sim b{font-family:var(--f-num);font-weight:400;font-size:22px}
+
+/* graveyard page */
+.causes{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px;margin-top:22px}
+.causes i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;font-size:12px;color:var(--mute)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend s{width:8px;height:8px;border-radius:2px;display:inline-block}
+.search{display:flex;gap:6px;border:1px solid var(--line-hi);border-radius:12px;padding:5px 5px 5px 16px;background:var(--panel);flex:1 1 320px;max-width:460px}
+.search input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font:inherit;outline:none}
+.search input::placeholder{color:var(--faint)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:500;text-align:left;padding:14px 22px;border-bottom:1px solid var(--line)}
+td{padding:14px 22px;border-top:1px solid var(--line);font-size:14px;vertical-align:middle}
+tbody tr:first-child td{border-top:0}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:rgba(42,45,58,.25)}
+td.n,th.n{text-align:right;font-family:var(--f-num)}
+td .why{color:var(--mute);font-size:13px}
+.empty{padding:28px 22px;color:var(--mute)}
+
+/* log page */
+.bars text{font-family:var(--f-num);font-size:11px;fill:var(--faint)}
+.hash{font-family:var(--f-num);font-size:12px;color:var(--faint)}
+
+/* how page */
+.timeline{padding:30px 26px 26px}
+.tl{position:relative;height:56px;margin-top:8px}
+.tl .seg1{position:absolute;left:0;width:83.33%;top:22px;height:12px;border-radius:6px 0 0 6px;background:linear-gradient(90deg,rgba(169,157,220,.35),rgba(169,157,220,.6))}
+.tl .seg2{position:absolute;left:83.33%;right:0;top:22px;height:12px;border-radius:0 6px 6px 0;background:rgba(234,180,100,.55)}
+.tl .tk{position:absolute;top:0;bottom:0;width:1px;background:var(--line-hi)}
+.tl .tk span{position:absolute;top:-2px;left:6px;font-family:var(--f-num);font-size:11px;color:var(--mute);white-space:nowrap}
+.tl .tk:last-child span{left:auto;right:6px}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:22px;border-top:1px solid var(--line)}
+.steps > div{padding:20px 20px 0 0;display:grid;gap:6px;align-content:start}
+.steps > div + div{padding-left:20px;border-left:1px solid var(--line)}
+.steps .n{font-family:var(--f-num);font-size:12px;color:var(--candle)}
+.steps h4,.rules h4{margin:0;font-size:15px;font-weight:500}
+.steps p,.rules p{margin:0;font-size:13px;color:var(--mute)}
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.rule{padding:24px;display:grid;gap:8px;align-content:start}
+.rule + .rule{border-left:1px solid var(--line)}
+.rule .n{font-family:var(--f-pixel);font-size:11px;color:var(--candle)}
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:14px;padding:28px 26px}
+.node{border:1px solid var(--line-hi);border-radius:14px;padding:16px 18px;display:grid;gap:4px;background:var(--bg)}
+.node b{font-weight:500}
+.node small{color:var(--mute);font-size:12px}
+.arrow{color:var(--faint);font-family:var(--f-num)}
+.tbd{display:inline-flex;align-items:center;gap:8px;margin-top:4px}
+.faq details{border-top:1px solid var(--line);padding:18px 4px}
+.faq details:first-child{border-top:0}
+.faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;font-size:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--f-num);color:var(--mute);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{margin:10px 0 0;color:var(--mute);max-width:70ch}
+
+footer{margin-top:96px;padding-top:28px;border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;font-size:12px;color:var(--faint)}
+footer p{margin:0;max-width:72ch}
+footer nav{display:flex;gap:16px}
+footer a{text-decoration:none}footer a:hover{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line-hi);
+  font-size:13px;padding:10px 16px;border-radius:10px;z-index:60;max-width:calc(100% - 32px);box-shadow:0 20px 40px -20px #000}
+
+@media (max-width:900px){
+  .links{display:none}
+  .console{grid-template-columns:1fr 1fr}
+  .console .cell:first-child{grid-column:1/-1}
+  .console .cell:nth-child(2){border-left:0;border-top:1px solid var(--line)}
+  .console .cell:nth-child(3){border-top:1px solid var(--line)}
+  .strip{grid-template-columns:1fr 1fr}
+  .strip > div:nth-child(3){border-left:0}
+  .strip > div:nth-child(n+3){border-top:1px solid var(--line)}
+  .cgrid{grid-template-columns:1fr}
+  .rules,.steps{grid-template-columns:1fr 1fr}
+  .rule:nth-child(3){border-left:0}.rule:nth-child(n+3){border-top:1px solid var(--line)}
+  .steps > div:nth-child(3){border-left:0;padding-left:0}.steps > div:nth-child(n+3){border-top:1px solid var(--line);margin-top:20px}
+  .flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);justify-self:center}
+}
+@media (max-width:640px){
+  body{padding-inline:16px}
+  .nav{margin-inline:-16px;padding-inline:16px}
+  .live{display:none}
+  .hero{height:auto;display:grid}
+  #scene{position:relative;height:240px}
+  .hero::after{bottom:auto;height:240px;background:linear-gradient(0deg,rgba(8,8,12,.9) 0%,rgba(8,8,12,0) 35%)}
+  .copy{position:relative;left:auto;right:auto;bottom:auto;padding:4px 20px 24px;margin-top:-36px}
+  .big{font-size:24px}
+  .row{grid-template-columns:26px minmax(0,1fr) 74px;gap:12px;padding:14px 16px}
+  .row .rank,.fell{display:none}
+  .tally{grid-column:2;grid-row:2}
+  .vote{grid-column:3;grid-row:1/3;align-self:center}
+  .row canvas{width:26px;height:29px}
+  .cell,.card{padding:20px}
+  .log li{padding:14px 16px;grid-template-columns:64px minmax(0,1fr) auto}
+  .record{grid-template-columns:1fr;gap:16px;padding-top:20px}
+  .bigstone{width:150px;height:165px}
+  .sim{grid-template-columns:1fr}.sim > div + div{padding-left:0;border-left:0;border-top:1px solid var(--line)}
+  .rules,.steps{grid-template-columns:1fr}
+  .rule + .rule{border-left:0;border-top:1px solid var(--line)}
+  .steps > div + div{border-left:0;padding-left:0;border-top:1px solid var(--line);margin-top:20px}
+  .ptitle{padding-block:48px 28px}
+  section.block,.band{margin-top:64px}
+  footer{grid-template-columns:1fr}
+  .score > div{grid-template-columns:96px minmax(0,1fr) 36px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<header class="nav">
+  <div class="wrap">
+    <a class="mark" href="#home"><canvas id="mk" width="8" height="10" aria-hidden="true"></canvas>NECRO</a>
+    <nav class="links" aria-label="Pages">
+      <a href="#home" data-nav="home">Séance</a>
+      <a href="#graveyard" data-nav="graveyard">Graveyard</a>
+      <a href="#log" data-nav="log">Pump log</a>
+      <a href="#how" data-nav="how">How it works</a>
+    </nav>
+    <div class="navr">
+      <span class="live"><span class="dot"></span>Robinhood Chain</span>
+      <button class="btn line" id="connect">Connect wallet</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ SÉANCE (home) ============ -->
+<main data-page="home">
+  <section class="hero">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="copy">
+      <div class="eyebrow"><span class="pill" id="modePill">PREVIEW</span><span id="modeText">Sample data</span></div>
+      <h1>Every hour,<br>one coin <i>rises.</i></h1>
+      <p>$NECRO holders vote on ten dead coins. At the top of every hour, the trading fees buy the winner back from the grave.</p>
+      <div class="ctas">
+        <a class="btn primary lg" href="#ballot" id="toBallot">Cast your vote</a>
+        <a class="btn glass lg" href="#how">How it works</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel console" aria-label="Next pump">
+    <div class="cell">
+      <span class="label">Next pump in</span>
+      <div class="clock" id="clock">--<span>:</span>--</div>
+      <div class="track" aria-hidden="true"><i id="prog"></i><b></b></div>
+      <div class="hint"><span>Voting locks at :50</span><span id="phase">Voting open</span></div>
+    </div>
+    <div class="cell">
+      <span class="label">Pump fund</span>
+      <div class="big gold" id="fund">0.18 ETH</div>
+      <p class="sub" id="fundSub">Fees collected this hour, spent in 5 small buys at the top of the hour.</p>
+    </div>
+    <div class="cell">
+      <span class="label">Leading now</span>
+      <div class="leader" id="leaderBox"><span id="lstone"></span><div><div class="tick" id="lname">–</div><div class="sub" id="lshare">–</div></div></div>
+      <svg class="spark" id="spark" viewBox="0 0 200 38" preserveAspectRatio="none" aria-hidden="true"></svg>
+    </div>
+  </section>
+
+  <section class="block" id="ballot" aria-labelledby="bh">
+    <div class="head">
+      <div><h2 id="bh">This hour's ballot</h2><p>Ten dead coins that passed every revival check. Tap one to read its record.</p></div>
+      <div class="filters">
+        <div class="seg" role="group" aria-label="Sort">
+          <button data-sort="votes" aria-pressed="true">Votes</button>
+          <button data-sort="score" aria-pressed="false">Score</button>
+          <button data-sort="holders" aria-pressed="false">Holders</button>
+          <button data-sort="fall" aria-pressed="false">Fall</button>
+        </div>
+        <div class="seg" role="group" aria-label="Cause of death">
+          <button data-cause="all" aria-pressed="true">All</button>
+          <button data-cause="dev" aria-pressed="false">Dev sold</button>
+          <button data-cause="fade" aria-pressed="false">Faded</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="list"></div>
+  </section>
+
+  <section class="block">
+    <div class="head">
+      <div><h2>Recently risen</h2><p>The last three pumps.</p></div>
+      <a class="btn line" href="#log">Full pump log →</a>
+    </div>
+    <ul class="panel log" id="homeLog"></ul>
+  </section>
+
+  <section class="band">
+    <h2>Your coin died. It doesn't have to stay dead.</h2>
+    <a class="btn primary lg" href="#graveyard">Search the graveyard</a>
+  </section>
+</main>
+
+<!-- ============ COIN RECORD ============ -->
+<main data-page="coin" hidden>
+  <a class="back" href="#home">← Back to the ballot</a>
+  <section class="record">
+    <canvas class="bigstone" id="bigstone" width="20" height="22" aria-hidden="true"></canvas>
+    <div class="epitaph">
+      <span class="rip" id="cRip">HERE LIES</span>
+      <h1 id="cName">$—</h1>
+      <blockquote id="cQuote"></blockquote>
+      <div class="acts">
+        <button class="btn primary lg" id="cVote">Vote to raise</button>
+        <span class="chip" id="cCause"></span>
+        <span class="sub" id="cRank"></span><a class="btn line" id="cExplorer" href="#" target="_blank" rel="noopener" hidden>View on explorer ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="strip" id="cStrip"></div>
+
+  <div class="cgrid">
+    <div class="card">
+      <div class="head" style="margin-bottom:6px"><div><h3>Life and death</h3><p class="sub">Market cap since launch</p></div></div>
+      <svg class="chart" id="cChart" viewBox="0 0 640 260" role="img" aria-label="Market cap history"></svg>
+    </div>
+    <div class="card">
+      <h3>Death record</h3>
+      <dl class="facts" id="cFacts"></dl>
+    </div>
+  </div>
+
+  <div class="cgrid">
+    <div class="card">
+      <h3>Revival score</h3>
+      <div class="scoreTotal"><b id="cScore">0</b><span class="sub">out of 100</span></div>
+      <div class="score" id="cScoreRows"></div>
+    </div>
+    <div class="card">
+      <h3>If it wins this hour</h3>
+      <p class="sub">Estimate based on this hour's fund and the pool's current depth.</p>
+      <div class="sim" id="cSim"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ GRAVEYARD ============ -->
+<main data-page="graveyard" hidden>
+  <section class="ptitle">
+    <span class="eyebrow">The Graveyard</span>
+    <h1>Every dead coin on <i>Robinhood Chain.</i></h1>
+    <p>We watch every coin on the chain. When one dies, it gets a grave here. Only the few that can still be bought safely make the ballot.</p>
+  </section>
+
+  <div class="strip">
+    <div><span class="label">Buried</span><b class="mono" id="gBuried">–</b><span class="sub">Down 90%+ and gone quiet</span></div>
+    <div><span class="label">Revivable</span><b class="mono gold" id="gRevivable">–</b><span class="sub">Pass every check right now</span></div>
+    <div><span class="label">Cooling down</span><b class="mono" id="gCooling">–</b><span class="sub">Pumped in the last 24h</span></div>
+    <div><span class="label">Died today</span><b class="mono down" id="gToday">–</b><span class="sub">New graves since midnight UTC</span></div>
+  </div>
+
+  <section class="block" style="margin-top:56px">
+    <div class="head"><div><h2>Causes of death</h2><p id="gCausesSub">Why most buried coins can't come back.</p></div></div>
+    <div class="causes" id="causeBar"></div>
+    <div class="legend" id="causeLegend"></div>
+  </section>
+
+  <section class="block" style="margin-top:72px">
+    <div class="head">
+      <form class="search" id="gSearch" role="search">
+        <label for="gq" hidden>Search the graveyard</label>
+        <input id="gq" placeholder="Search a ticker, e.g. RUGZILLA" autocomplete="off">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div class="seg" role="group" aria-label="Status" id="gFilter">
+        <button data-g="all" aria-pressed="true">All</button>
+        <button data-g="ok" aria-pressed="false">Revivable</button>
+        <button data-g="wait" aria-pressed="false">Cooling</button>
+        <button data-g="no" aria-pressed="false">Buried for good</button>
+      </div>
+    </div>
+    <div class="panel tablewrap">
+      <table>
+        <thead><tr><th>Coin</th><th>Status</th><th>Why</th><th class="n">Peak</th><th class="n">Now</th><th class="n">Died</th></tr></thead>
+        <tbody id="gBody"></tbody>
+      </table>
+    </div>
+    <p class="sub" style="margin-top:12px" id="gNote">Showing sample graves.</p>
+  </section>
+</main>
+
+<!-- ============ PUMP LOG ============ -->
+<main data-page="log" hidden>
+  <section class="ptitle">
+    <span class="eyebrow">Pump log</span>
+    <h1>Every ritual, <i>on the record.</i></h1>
+    <p>Each hour's buy is listed here with its transaction, so anyone can check where the fees went.</p>
+  </section>
+  <div class="strip">
+    <div><span class="label">Pumps run</span><b class="mono" id="lPumps">–</b><span class="sub">Since launch</span></div>
+    <div><span class="label">ETH spent</span><b class="mono gold" id="lEth">–</b><span class="sub">All from trading fees</span></div>
+    <div><span class="label">Avg move</span><b class="mono up" id="lAvg">–</b><span class="sub">About an hour after the buy</span></div>
+    <div><span class="label">Coins raised</span><b class="mono" id="lCoins">–</b><span class="sub">Different coins</span></div>
+  </div>
+  <section class="block" style="margin-top:56px">
+    <div class="head"><div><h2>Last 24 hours</h2><p>ETH spent on each hour's pump.</p></div></div>
+    <div class="card"><svg class="chart bars" id="lBars" viewBox="0 0 720 220" role="img" aria-label="ETH spent per pump over the last 24 hours"></svg></div>
+  </section>
+  <section class="block" style="margin-top:56px">
+    <div class="panel tablewrap">
+      <table>
+        <thead><tr><th>Time</th><th>Coin</th><th class="n">ETH bought</th><th class="n">Before → 1h after</th><th class="n">Move</th><th>Transaction</th></tr></thead>
+        <tbody id="lBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ============ HOW IT WORKS ============ -->
+<main data-page="how" hidden>
+  <section class="ptitle">
+    <span class="eyebrow">How it works</span>
+    <h1>One hour, <i>one resurrection.</i></h1>
+    <p>Necro runs the same ritual 24 times a day. Here's every step, and the rules that keep it fair.</p>
+  </section>
+
+  <section class="panel timeline" aria-label="One round">
+    <span class="label">One round</span>
+    <div class="tl" aria-hidden="true">
+      <div class="seg1"></div><div class="seg2"></div>
+      <div class="tk" style="left:0"><span>:00</span></div>
+      <div class="tk" style="left:83.33%"><span>:50</span></div>
+      <div class="tk" style="left:calc(100% - 1px)"><span>:00</span></div>
+    </div>
+    <div class="steps">
+      <div><span class="n">:00</span><h4>Snapshot</h4><p>A new ballot of ten opens and everyone's $NECRO balance is recorded.</p></div>
+      <div><span class="n">:00 – :50</span><h4>Vote</h4><p>Holders vote. More $NECRO means a heavier vote, based on the snapshot.</p></div>
+      <div><span class="n">:50</span><h4>Lock</h4><p>Voting closes and the winner is set. No more changes.</p></div>
+      <div><span class="n">:00 – :05</span><h4>Pump</h4><p>The hour's fees buy the winner in five small buys to limit slippage.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="head"><div><h2>Where the fees go</h2><p>Every $NECRO trade pays a fee. All of it funds the next pump.</p></div></div>
+    <div class="panel flow">
+      <div class="node"><b>$NECRO trades</b><small>Every buy and sell pays a fee</small></div>
+      <span class="arrow">→</span>
+      <div class="node"><b>Pump wallet</b><small>Fees are sent to a separate wallet that only the bot uses</small></div>
+      <span class="arrow">→</span>
+      <div class="node"><b>Winning coin bought</b><small id="afterBuyText">Burned or held</small><span class="tbd" id="afterBuyTbd"><span class="pill">TBD</span><small>Decided before launch</small></span></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="head"><div><h2>What makes a coin revivable</h2><p>Thousands of coins die. Only the ones that pass all four checks reach the ballot.</p></div></div>
+    <div class="panel rules">
+      <div class="rule"><span class="n">01</span><h4>ETH left in the pool</h4><p>The pool needs some ETH left so a buy actually moves the price and can be sold back.</p></div>
+      <div class="rule"><span class="n">02</span><h4>Dev holds under 2%</h4><p>So a pump never turns into the dev's exit.</p></div>
+      <div class="rule"><span class="n">03</span><h4>Dead a week, sell-tested</h4><p>It has to stay dead for 7 days, and a test sale has to go through, so no honeypots.</p></div>
+      <div class="rule"><span class="n">04</span><h4>One pump a day</h4><p>A winner sits out 24 hours so the ballot keeps moving.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="head"><div><h2>Questions</h2></div></div>
+    <div class="card faq">
+      <details><summary>Why isn't my coin on the ballot?</summary><p>It failed at least one of the four checks. Search it in the Graveyard and you'll see exactly which one.</p></details>
+      <details><summary>How are votes counted?</summary><p>Your vote is weighted by how much $NECRO you held when the round opened. Buying after the snapshot doesn't add weight until the next round.</p></details>
+      <details><summary>Can the same coin win every hour?</summary><p>No. A winner sits out for 24 hours before it can return to the ballot.</p></details>
+      <details><summary>Does a pump guarantee the coin goes up?</summary><p>No. It's a real buy, so it adds buying pressure, but the price after that depends on the market. Small funds mean small moves.</p></details>
+      <details><summary>Can I check where the money went?</summary><p>Yes. Every pump is listed in the Pump log with its transaction on the Robinhood Chain explorer. The pump wallet is public too: <span class="mono" id="pumpAddr">set at launch</span>.</p></details>
+      <details><summary>Which coins can be on the ballot?</summary><p>Coins launched on pons that peaked above $10K, then fell 90% or more and went quiet. pons pools are locked, so their liquidity can't be pulled.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p id="footNote">Necro is unaudited and in preview. Everything shown is sample data. A pump is a buy, not a guarantee. Not investment advice.</p>
+  <nav aria-label="Footer"><a href="#home">Séance</a><a href="#graveyard">Graveyard</a><a href="#log">Pump log</a><a href="#how">How it works</a></nav>
+</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+/* =====================================================================
+   Necro website. Uses the live API when the server hosts this page,
+   and falls back to clearly labeled sample data everywhere else.
+   ===================================================================== */
+const $=s=>document.querySelector(s);
+const HR=3600000,DAYMS=24*HR;
+const S={live:false,cfg:null,round:null,coin:null,grave:null,log:null,auth:null,sort:"votes",cause:"all",gFilter:"all",gQuery:"",current:null};
+try{S.auth=JSON.parse(localStorage.getItem("necro-auth")||"null")}catch(e){}
+
+/* ---------------- helpers ---------------- */
+const money=n=>n==null||!isFinite(n)?"–":n===0?"$0":n>=1e6?"$"+(n/1e6).toFixed(1)+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+Math.round(n);
+const ethFmt=n=>n==null?"–":(n>=1?n.toFixed(2):n.toFixed(3))+" ETH";
+const dateFmt=t=>t?new Date(t).toLocaleDateString([],{month:"short",day:"numeric"}):"–";
+const timeFmt=t=>new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short=a=>a?a.slice(0,6)+"…"+a.slice(-4):"";
+function seeded(str){let s=[...String(str)].reduce((a,c)=>a*31+c.charCodeAt(0),7)%233280;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600)}
+async function api(path,opts={}){
+  const headers={"content-type":"application/json"};if(S.auth?.token)headers.authorization="Bearer "+S.auth.token;
+  const r=await fetch(path,{...opts,headers:{...headers,...(opts.headers||{})}});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.message||"Something went wrong.");e.code=j.error;e.status=r.status;throw e}
+  return j;
+}
+const EPITAPHS=["Promised the moon. Delivered a candle.","The printer stopped. So did everyone else.","Sold by a very bad dev.","Woke up at 4am. Never woke up again.","Only went up. Until it didn't.","We were, in fact, not all going to make it.","Feels bad, man.","Ordered the car. Got the bus.","It's fine. Everything is fine.","Said good morning. Never saw the night.","Diamond hands, paper dev.","Gone, but the bags remain.","Rugged in its sleep.","The chart had other plans."];
+const epitaph=c=>c.epitaph||EPITAPHS[Math.floor(seeded(c.token)()*EPITAPHS.length)];
+
+/* ---------------- sample data (used when no server is behind the page) ---------------- */
+const SAMPLE=(function(){
+  const now=Date.now(),open=Math.floor(now/HR)*HR;
+  const base=[["HOPIUM",2.1e6,61e3,"dev",4120,184,18,0.4,80,61],["BRRR",880e3,47e3,"fade",2260,131,12,1.1,95,46],["MOONDOG",3.4e6,52e3,"dev",5310,99,21,0,74,55],["GRINDSET",410e3,23e3,"fade",1180,76,7,1.6,62,33],["STONKBOY",1.2e6,66e3,"dev",2940,64,15,0.9,85,52],["WAGMI2",650e3,39e3,"fade",1630,42,9,1.8,57,26],["PEPEROBIN",2.7e6,131e3,"dev",3880,38,26,0.2,104,66],["LAMBO",300e3,27e3,"fade",910,21,6,1.3,50,22],["COPIUM",1.6e6,88e3,"dev",3320,19,17,0.7,89,58],["GMGN",520e3,46e3,"fade",1450,9,8,1.5,43,25]];
+  const tot=base.reduce((a,b)=>a+b[5],0);
+  const coins=base.map(([sym,peak,nw,cause,holders,votes,liq,dev,launchDays,diedDays],i)=>{
+    const token="0x"+[...sym].map(c=>c.charCodeAt(0).toString(16)).join("").padEnd(40,"0").slice(0,40);
+    const poolEth=liq/2600,parts={Liquidity:[Math.round(Math.min(1,poolEth/2)*30)+12,30],Holders:[Math.min(25,Math.round(holders/5310*25)),25],"Dev wallet":[Math.round(20*(1-dev/2)),20],"Time buried":[Math.min(15,Math.round(diedDays/30*15)),15],"Recent activity":[3+(i%5),10]};
+    return {token,symbol:sym,status:"ok",why:"On the ballot",cause,peakUsd:peak,nowUsd:nw,fall:Math.round((1-nw/peak)*100),holders,poolEth,devPct:dev,
+      launchedAt:now-launchDays*DAYMS,diedAt:now-diedDays*DAYMS,parts,score:Object.values(parts).reduce((a,p)=>a+p[0],0),weight:String(votes),voters:votes,pct:Math.round(votes/tot*1000)/10,epitaph:EPITAPHS[i]};
+  });
+  const buried=[["RUGZILLA","no","Under 0.05 ETH left in the pool",1.8e6,900],["SAFEMOON3","no","Dev still holds 31.0%",960e3,14e3],["TRAPCOIN","no","Failed the sell test",240e3,6e3],["BONKERS","wait","Pumped 1 hour ago",820e3,31e3],["ZOOMER","wait","Pumped 2 hours ago",450e3,19e3],["FROGGY","fresh","Died 4 days ago, needs 7",310e3,22e3],["DEGENX","no","Under 0.05 ETH left in the pool",2.4e6,1e3],["ROBINRUG","no","Dev still holds 12.0%",700e3,9e3],["GIGABRAIN","no","Under 0.05 ETH left in the pool",380e3,4e3],["NUGGET","wait","Pumped 4 hours ago",290e3,14e3]]
+    .map(([sym,status,why,peak,nw],i)=>({token:"0x"+(i+1).toString(16).padStart(40,"b"),symbol:sym,status,why,peakUsd:peak,nowUsd:nw,diedAt:now-(20+i*3)*DAYMS,cause:"fade"}));
+  const names=["BONKERS","ZOOMER","CHAD","NUGGET","HOPIUM2","WIFHAT","GROK3","SNEK","BASEDAF","TENDIES","PUMPKIN","OKBOOMER","MEMELORD","DOGEROBIN","FLOKIRH","SIGMA","RIZZ","NGMI","TOPBLAST","DIAMOND","SOYJAK","CATWIF","APU","BOBO"];
+  const rnd=seeded("pumplog");
+  const rows=names.map((sym,i)=>{const pre=6e3+rnd()*40e3,mv=0.04+rnd()*0.42,eth=0.11+rnd()*0.13;const h=Array.from({length:4},()=>Math.floor(rnd()*65536).toString(16).padStart(4,"0")).join("");
+    return {at:open-i*HR,token:"0x"+h.padEnd(40,"0"),symbol:sym,eth,preUsd:pre,postUsd:pre*(1+mv),move:Math.round(mv*100),tx:"0x"+h.padEnd(64,"0")}});
+  return {
+    round:{live:false,practice:false,opensAt:open,locksAt:open+50*60000,pumpsAt:open+HR,fundEth:0.18,ballot:coins,leader:coins[0].token,spark:(()=>{const r=seeded("spark");let v=61e3;return Array.from({length:24},()=>v=v*(0.92+r()*0.14))})(),myVote:null,voters:tot},
+    graveyard:{stats:{buried:3412,revivable:10,cooling:24,today:38},causes:[["Pool nearly empty",1480],["Dev still holds",790],["Failed sell test",286],["Too fresh",110],["Cooling down",24],["Revivable",10]],rows:[...coins,...buried]},
+    log:{stats:{pumps:412,ethSpent:74.6,avgMove:24,coins:187},rows,bars:rows.slice().reverse().map(r=>({at:r.at,eth:r.eth,symbol:r.symbol})),explorer:"https://robinhoodchain.blockscout.com"},
+    coin(token){
+      const c=coins.find(x=>x.token===token)||buried.find(x=>x.token===token)||coins[0];
+      const r=seeded(c.token+"c"),n=70,peakAt=18,start=c.launchedAt||now-60*DAYMS;
+      const history=Array.from({length:n},(_,i)=>{let v;if(i<=peakAt)v=c.peakUsd*Math.pow(i/peakAt,2.2)*(0.92+r()*0.1)+c.nowUsd*0.2;else{const k=(i-peakAt)/(n-1-peakAt);v=c.nowUsd+(c.peakUsd-c.nowUsd)*Math.pow(1-k,3.2)*(0.9+r()*0.16)}
+        return {t:start+(now-start)*i/(n-1),usd:i===peakAt?c.peakUsd:i===n-1?c.nowUsd:v}});
+      const fundUsd=0.18*2600,move=Math.min(60,Math.round(fundUsd/((c.poolEth||0.005)*2600)*90));
+      const rank=coins.slice().sort((a,b)=>b.voters-a.voters).indexOf(c)+1;
+      return {...c,history,onBallot:c.status==="ok",rank:rank||null,votes:c.voters?{pct:c.pct,voters:c.voters}:null,sim:{fundEth:0.18,estMovePct:move,estMcapUsd:c.nowUsd*(1+move/100)},explorer:null};
+    }
+  };
+})();
+
+/* ---------------- pixel art ---------------- */
+function paintStone(x,lead,K){
+  const r=(a,b,c,d,col)=>{x.fillStyle=col;x.fillRect(a*K,b*K,c*K,d*K)};
+  const body=lead?"#4a4462":"#272a36",hi=lead?"#5e5880":"#343846",mark=lead?"#eab464":"#585867";
+  r(3,0,4,1,body);r(2,1,6,1,body);r(1,2,8,7,body);r(1,2,1,7,hi);r(2,1,1,1,hi);r(8,2,1,7,"#1a1b24");
+  r(4,3,2,1,mark);r(3,4,4,1,mark);r(4,5,2,2,mark);r(0,9,10,2,"#2a2218");[0,3,7,9].forEach(i=>r(i,9,1,1,"#3e5a46"));
+}
+function stone(lead){const c=document.createElement("canvas");c.width=10;c.height=11;paintStone(c.getContext("2d"),lead,1);return c}
+(function(){const x=$("#mk").getContext("2d");x.fillStyle="#efeef4";[[2,0,4,1],[1,1,6,1],[0,2,8,6]].forEach(r=>x.fillRect(...r));
+  x.fillStyle="#08080c";x.fillRect(3,3,2,4);x.fillRect(2,4,4,1);x.fillStyle="#eab464";x.fillRect(0,8,8,2);})();
+
+/* ---------------- Séance (home) ---------------- */
+function renderRound(){
+  const R=S.round;if(!R)return;
+  $("#modePill").textContent=!S.live?"PREVIEW":R.practice?"PRACTICE":"LIVE";
+  $("#modeText").textContent=!S.live?"Sample data":R.practice?"1 wallet = 1 vote until $NECRO launches":"Round "+new Date(R.opensAt).toLocaleTimeString([],{hour:"numeric"});
+  $("#fund").textContent=R.fundEth==null?"Not set up":ethFmt(R.fundEth);
+  $("#fundSub").textContent=R.fundEth==null?"The pump wallet goes live at launch.":`Spent in ${S.cfg?.rules?.pumpChunks||5} small buys at the top of the hour.`;
+  let list=R.ballot.filter(g=>S.cause==="all"||g.cause===S.cause);
+  const key={votes:g=>Number(g.weight),score:g=>g.score,holders:g=>g.holders||0,fall:g=>g.fall}[S.sort];
+  list=list.slice().sort((a,b)=>key(b)-key(a));
+  const el=$("#list");el.innerHTML="";
+  if(R.warming){el.innerHTML='<p class="empty">The graveyard is still being dug. The scanner is reading every pons coin on the chain, and the first ballot appears once it finds revivable ones.</p>'}
+  list.forEach((g,i)=>{
+    const mine=R.myVote?.token===g.token,lead=g.token===R.leader;
+    const r=document.createElement("div");r.className="row"+(lead?" lead":"");r.dataset.coin=g.token;r.tabIndex=0;
+    r.innerHTML=`<span class="rank">${String(i+1).padStart(2,"0")}</span><span class="st"></span>
+      <div class="who"><span class="tick">$${esc(g.symbol)}${lead?'<span class="chip lead">Leading</span>':""}${mine?'<span class="chip mine">Your vote</span>':""}</span>
+      <span class="meta"><i>${g.cause==="dev"?"Dev sold":"Faded"}</i> · ${g.holders!=null?Number(g.holders).toLocaleString()+" holders stuck · ":""}score ${g.score}</span></div>
+      <div class="fell"><b>−${g.fall}%</b><span>${money(g.peakUsd)} → ${money(g.nowUsd)}</span></div>
+      <div class="tally"><div class="bar"><i style="width:${g.pct}%"></i></div><span>${g.pct}% · ${g.voters} vote${g.voters===1?"":"s"}</span></div>
+      <button class="vote" data-t="${g.token}" aria-pressed="${mine}">${mine?"Voted":"Vote"}</button>`;
+    r.querySelector(".st").replaceWith(stone(lead));el.appendChild(r);
+  });
+  if(!R.warming&&!list.length)el.innerHTML='<p class="empty">No coins match that filter.</p>';
+  const L=R.ballot.find(b=>b.token===R.leader);
+  $("#lname").textContent=L?"$"+L.symbol:"–";
+  $("#lshare").textContent=L?`${L.pct}% of votes · ${money(L.nowUsd)} now`:"Waiting for the first ballot";
+  const ls=$("#lstone");ls.innerHTML="";ls.appendChild(stone(true));
+  spark(R.spark||[]);
+}
+function spark(pts){
+  if(pts.length<2){$("#spark").innerHTML="";return}
+  const mn=Math.min(...pts),mx=Math.max(...pts);
+  const xy=pts.map((p,i)=>[i/(pts.length-1)*200,34-(p-mn)/(mx-mn||1)*30]);
+  const d=xy.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");const l=xy[xy.length-1];
+  const up=pts[pts.length-1]>=pts[0],col=up?"#8ccc9f":"#dc7d73";
+  $("#spark").innerHTML=`<path d="${d} L200 38 L0 38Z" fill="${up?"rgba(140,204,159,.10)":"rgba(220,125,115,.10)"}"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" vector-effect="non-scaling-stroke"/><circle cx="${l[0]-2}" cy="${l[1]}" r="2.5" fill="${col}"/>`;
+}
+function renderHomeLog(){
+  const rows=(S.log?.rows||[]).slice(0,3);
+  $("#homeLog").innerHTML=rows.length?rows.map(logItem).join(""):'<li><span class="sub">No pumps yet. The first one runs at the top of the hour after launch.</span></li>';
+}
+function logItem(p){
+  return `<li><time>${timeFmt(p.at)}</time><span class="what"><span class="tick">$${esc(p.symbol)}</span><small>${ethFmt(p.eth)} bought${p.preUsd!=null&&p.postUsd!=null?" · "+money(p.preUsd)+" → "+money(p.postUsd):""}</small></span>
+    <span class="mv${p.move!=null&&p.move<0?" down":""}">${p.move==null?"…":(p.move>=0?"+":"")+p.move+"%"}</span></li>`;
+}
+
+/* ---------------- voting + wallet ---------------- */
+async function ensureChain(){const eth=window.ethereum;
+  try{await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x1237"}]})}
+  catch(e){if(e.code===4902||/unrecognized|not added|unknown chain/i.test(e.message||"")){await eth.request({method:"wallet_addEthereumChain",params:[{chainId:"0x1237",chainName:"Robinhood Chain",nativeCurrency:{name:"Ether",symbol:"ETH",decimals:18},rpcUrls:["https://rpc.mainnet.chain.robinhood.com"],blockExplorerUrls:["https://robinhoodchain.blockscout.com"]}]})}else throw e}}
+async function connect(){
+  if(!S.live){toast("Wallet connect works on the live site");return false}
+  if(!window.ethereum){toast("No wallet found. Open this page in MetaMask, Robinhood Wallet or another wallet browser.");return false}
+  try{
+    const [addr]=await window.ethereum.request({method:"eth_requestAccounts"});
+    await ensureChain().catch(()=>{});
+    const {message,nonce}=await api("/api/auth/nonce",{method:"POST",body:JSON.stringify({address:addr})});
+    const hex="0x"+[...new TextEncoder().encode(message)].map(b=>b.toString(16).padStart(2,"0")).join("");
+    const signature=await window.ethereum.request({method:"personal_sign",params:[hex,addr]});
+    const j=await api("/api/auth/verify",{method:"POST",body:JSON.stringify({address:addr,nonce,signature})});
+    S.auth={token:j.token,address:j.address,exp:Date.now()+j.expiresInMs};
+    try{localStorage.setItem("necro-auth",JSON.stringify(S.auth))}catch(e){}
+    renderConnect();toast("Wallet connected");loadRound();return true;
+  }catch(e){toast(e.code===4001||/reject|denied/i.test(e.message||"")?"Connection cancelled":e.message||"Couldn't connect");return false}
+}
+function renderConnect(){const b=$("#connect");b.textContent=S.auth?.address?short(S.auth.address):"Connect wallet";}
+async function castVote(token){
+  if(!S.live){ // sample mode: count locally so the page can be tried
+    const R=S.round;const prev=R.myVote?.token;if(prev===token){toast("You already voted for this coin");return}
+    R.ballot.forEach(b=>{if(b.token===prev){b.voters--;b.weight=String(b.voters)}if(b.token===token){b.voters++;b.weight=String(b.voters)}});
+    const tot=R.ballot.reduce((a,b)=>a+b.voters,0);R.ballot.forEach(b=>b.pct=Math.round(b.voters/tot*1000)/10);
+    R.myVote={token};R.leader=R.ballot.slice().sort((a,b)=>b.voters-a.voters)[0].token;
+    renderRound();if(S.current===token)openCoin(token,true);toast("Vote cast · preview only");return;
+  }
+  if(!S.auth?.token||S.auth.exp<Date.now()){if(!(await connect()))return}
+  try{const j=await api("/api/vote",{method:"POST",body:JSON.stringify({token})});
+    const fund=S.round?.fundEth;S.round=j.round;S.round.fundEth=fund;renderRound();
+    const g=S.round.ballot.find(b=>b.token===token);toast(`Vote cast for $${g?.symbol||"coin"}`);
+    if(S.current===token)openCoin(token,true);
+  }catch(e){if(e.status===401){S.auth=null;try{localStorage.removeItem("necro-auth")}catch(_){}renderConnect()}toast(e.message)}
+}
+$("#connect").addEventListener("click",()=>{if(S.auth?.address){toast("Connected as "+short(S.auth.address))}else connect()});
+$("#list").addEventListener("click",e=>{const b=e.target.closest(".vote");if(b){e.stopPropagation();castVote(b.dataset.t);return}const r=e.target.closest(".row");if(r)go("coin-"+r.dataset.coin)});
+$("#list").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("row"))go("coin-"+e.target.dataset.coin)});
+$("#leaderBox").addEventListener("click",()=>{if(S.round?.leader)go("coin-"+S.round.leader)});
+document.querySelectorAll("[data-sort]").forEach(b=>b.addEventListener("click",()=>{S.sort=b.dataset.sort;document.querySelectorAll("[data-sort]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderRound()}));
+document.querySelectorAll("[data-cause]").forEach(b=>b.addEventListener("click",()=>{S.cause=b.dataset.cause;document.querySelectorAll("[data-cause]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderRound()}));
+$("#toBallot").addEventListener("click",e=>{e.preventDefault();$("#ballot").scrollIntoView({behavior:"smooth"})});
+
+/* ---------------- coin record ---------------- */
+async function openCoin(token,quiet){
+  let c;
+  if(S.live){try{c=await api("/api/coin/"+token)}catch(e){toast(e.message);if(!quiet)go("graveyard");return}}
+  else c=SAMPLE.coin(token);
+  S.current=c.token;S.coin=c;
+  const bx=$("#bigstone").getContext("2d");bx.clearRect(0,0,20,22);paintStone(bx,true,2);
+  $("#cName").textContent="$"+c.symbol;
+  $("#cRip").textContent=`HERE LIES · ${dateFmt(c.launchedAt).toUpperCase()} – ${dateFmt(c.diedAt).toUpperCase()}`;
+  $("#cQuote").textContent="“"+epitaph(c)+"”";
+  const cc=$("#cCause");cc.className="chip no";cc.textContent=c.cause==="dev"?"Cause of death: dev sold":"Cause of death: faded";
+  const mine=S.round?.myVote?.token===c.token;
+  $("#cRank").textContent=c.onBallot?(c.rank?`#${c.rank} on the ballot · ${c.votes?.pct??0}% of votes`:"On this hour's ballot"):c.why;
+  const vb=$("#cVote");vb.hidden=!c.onBallot;vb.textContent=mine?"You voted for this coin":"Vote to raise $"+c.symbol;vb.className=mine?"btn line lg":"btn primary lg";vb.onclick=()=>castVote(c.token);
+  const ex=$("#cExplorer");ex.hidden=!c.explorer;if(c.explorer)ex.href=c.explorer;
+  $("#cStrip").innerHTML=`
+    <div><span class="label">Peak</span><b>${money(c.peakUsd)}</b><span class="sub">${dateFmt(c.peakAt||c.launchedAt)}</span></div>
+    <div><span class="label">Now</span><b>${money(c.nowUsd)}</b><span class="sub down">−${c.fall??Math.round((1-c.nowUsd/c.peakUsd)*100)}% from peak</span></div>
+    <div><span class="label">Holders stuck</span><b>${c.holders!=null?Number(c.holders).toLocaleString():"–"}</b><span class="sub">Still holding</span></div>
+    <div><span class="label">ETH in pool</span><b>${c.poolEth!=null?c.poolEth.toFixed(3):"–"}</b><span class="sub">What a sell can draw from</span></div>`;
+  $("#cFacts").innerHTML=[["Launched",dateFmt(c.launchedAt)],["Peak",money(c.peakUsd)],["Time of death",dateFmt(c.diedAt)],["Cause",c.cause==="dev"?"Dev sold the launch bag":"Volume faded out"],
+    ["Dev now holds",c.devPct!=null?c.devPct.toFixed(2)+"%":"–"],["Status",c.why],["Votes this hour",c.votes?String(c.votes.voters):"0"]]
+    .map(([a,b])=>`<div><dt>${a}</dt><dd>${esc(b)}</dd></div>`).join("");
+  $("#cScore").textContent=c.score??0;
+  $("#cScoreRows").innerHTML=Object.entries(c.parts||{}).map(([k,[v,m]])=>`<div><span>${esc(k)}</span><div class="bar"><i style="width:${v/m*100}%"></i></div><b>${v}/${m}</b></div>`).join("");
+  $("#cSim").innerHTML=c.sim?`
+    <div><span class="label">Buy size</span><b>${ethFmt(c.sim.fundEth)}</b><span class="sub">This hour's fund</span></div>
+    <div><span class="label">Est. price move</span><b class="up">+${c.sim.estMovePct}%</b><span class="sub">Before anyone else trades</span></div>
+    <div><span class="label">Est. market cap</span><b>${money(c.sim.estMcapUsd)}</b><span class="sub">From ${money(c.nowUsd)}</span></div>`:'<div><span class="sub">The estimate appears once the pump wallet is funded.</span></div>';
+  drawCoinChart(c);
+  if(!quiet)show("coin");
+}
+function drawCoinChart(c){
+  const pts=c.history||[];const svg=$("#cChart");
+  if(pts.length<2){svg.innerHTML=`<text x="320" y="130" text-anchor="middle">Not enough trades to draw a chart yet</text>`;return}
+  const W=640,H2=260,L=56,R=16,T=18,B=34,n=pts.length;
+  const mxv=Math.max(...pts.map(p=>p.usd))*1.08||1,x=i=>L+i/(n-1)*(W-L-R),y=v=>T+(1-v/mxv)*(H2-T-B);
+  const steps=[1e3,2e3,5e3,1e4,2e4,5e4,1e5,2e5,5e5,1e6,2e6,5e6,1e7];const step=steps.find(s=>mxv/s<=4)||1e7;let grid="";
+  for(let v=0;v<=mxv;v+=step)grid+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1c1e28"/><text x="${L-10}" y="${y(v)+4}" text-anchor="end">${money(v)}</text>`;
+  const d=pts.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p.usd).toFixed(1)).join(" ");
+  let pi=0;pts.forEach((p,i)=>{if(p.usd>pts[pi].usd)pi=i});
+  const px=x(pi),py=y(pts[pi].usd),ex=x(n-1),ey=y(pts[n-1].usd),flip=px>W*0.7;
+  svg.innerHTML=`<defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#a99ddc" stop-opacity=".22"/><stop offset="1" stop-color="#a99ddc" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<path d="${d} L${W-R} ${H2-B} L${L} ${H2-B}Z" fill="url(#cg)"/><path d="${d}" fill="none" stroke="#a99ddc" stroke-width="1.75" stroke-linejoin="round"/>
+    <line x1="${px}" x2="${px}" y1="${py}" y2="${H2-B}" stroke="#2a2d3a" stroke-dasharray="3 3"/>
+    <circle cx="${px}" cy="${py}" r="4" fill="#eab464"/><text class="ann" x="${flip?px-8:px+8}" y="${py+4}" text-anchor="${flip?"end":"start"}">Peak ${money(pts[pi].usd)}</text>
+    <circle cx="${ex}" cy="${ey}" r="4" fill="#dc7d73"/><text class="ann" x="${ex-8}" y="${ey-10}" text-anchor="end">Now ${money(pts[n-1].usd)}</text>
+    <text x="${L}" y="${H2-10}">${dateFmt(pts[0].t)}</text><text x="${W-R}" y="${H2-10}" text-anchor="end">Today</text>`;
+}
+
+/* ---------------- graveyard ---------------- */
+function renderGraveyard(){
+  const G=S.grave;if(!G)return;
+  $("#gBuried").textContent=G.stats.buried.toLocaleString();$("#gRevivable").textContent=G.stats.revivable;$("#gCooling").textContent=G.stats.cooling;$("#gToday").textContent="+"+G.stats.today;
+  const colors={"Pool nearly empty":"#dc7d73","Dev still holds":"#c79a6a","Failed sell test":"#8a6aa8","Too fresh":"#4a4a5a","Cooling down":"#6e6c80","Revivable":"#eab464"};
+  const sum=G.causes.reduce((a,c)=>a+c[1],0)||1;
+  $("#causeBar").innerHTML=G.causes.map(c=>`<i style="width:${c[1]/sum*100}%;background:${colors[c[0]]||"#555"}" title="${esc(c[0])}"></i>`).join("");
+  $("#causeLegend").innerHTML=G.causes.map(c=>`<span><s style="background:${colors[c[0]]||"#555"}"></s>${esc(c[0])} <b class="mono" style="font-weight:400;color:var(--soft)">${c[1].toLocaleString()}</b></span>`).join("");
+  $("#gCausesSub").textContent=`Why the ${G.stats.buried.toLocaleString()} buried coins can or can't come back right now.`;
+  let rows=G.rows;
+  if(!S.live){const q=S.gQuery.trim().replace(/^\$/,"").toUpperCase();rows=rows.filter(r=>(S.gFilter==="all"||r.status===S.gFilter||(S.gFilter==="no"&&r.status==="fresh"))&&(!q||r.symbol.includes(q)))}
+  const lab={ok:["ok","Revivable"],wait:["wait","Cooling down"],fresh:["wait","Too fresh"],no:["no","Buried for good"]};
+  $("#gBody").innerHTML=rows.length?rows.map(r=>`<tr data-coin="${r.token}" style="cursor:pointer">
+    <td><span class="tick">$${esc(r.symbol)}</span></td><td><span class="chip ${lab[r.status][0]}">${lab[r.status][1]}</span></td>
+    <td class="why">${esc(r.why)}</td><td class="n">${money(r.peakUsd)}</td><td class="n">${money(r.nowUsd)}</td><td class="n">${dateFmt(r.diedAt)}</td></tr>`).join("")
+    :`<tr><td colspan="6" class="empty">${S.gQuery?"No grave matches that. If the coin is still trading, it isn't dead yet.":"Nothing here yet."}</td></tr>`;
+  $("#gNote").textContent=S.live?`Showing ${rows.length} of ${G.stats.buried.toLocaleString()} graves${G.evaluatedAt?" · checked "+timeFmt(G.evaluatedAt):""}.`:"Showing sample graves.";
+}
+async function loadGraveyard(){
+  if(!S.live){S.grave=SAMPLE.graveyard;renderGraveyard();return}
+  try{const q=new URLSearchParams({status:S.gFilter==="all"?"":S.gFilter,q:S.gQuery});S.grave=await api("/api/graveyard?"+q);renderGraveyard()}catch(e){toast(e.message)}
+}
+let gT;$("#gq").addEventListener("input",e=>{S.gQuery=e.target.value;clearTimeout(gT);gT=setTimeout(loadGraveyard,250)});
+$("#gSearch").addEventListener("submit",e=>{e.preventDefault();S.gQuery=$("#gq").value;loadGraveyard()});
+document.querySelectorAll("[data-g]").forEach(b=>b.addEventListener("click",()=>{S.gFilter=b.dataset.g;document.querySelectorAll("[data-g]").forEach(x=>x.setAttribute("aria-pressed",x===b));loadGraveyard()}));
+$("#gBody").addEventListener("click",e=>{const r=e.target.closest("tr[data-coin]");if(r)go("coin-"+r.dataset.coin)});
+
+/* ---------------- pump log ---------------- */
+function renderLog(){
+  const Lg=S.log;if(!Lg)return;
+  $("#lPumps").textContent=Lg.stats.pumps.toLocaleString();$("#lEth").textContent=Lg.stats.ethSpent.toFixed(Lg.stats.ethSpent<10?3:1);
+  $("#lAvg").textContent=Lg.stats.avgMove==null?"–":(Lg.stats.avgMove>=0?"+":"")+Lg.stats.avgMove+"%";$("#lCoins").textContent=Lg.stats.coins;
+  const W=720,H2=220,L=44,R=10,T=14,B=30,data=Lg.bars,bw=(W-L-R)/data.length;
+  const top=Math.max(0.05,...data.map(d=>d.eth)),nice=[0.05,0.1,0.2,0.3,0.5,1,2,5].find(v=>v>=top)||top,y=v=>T+(1-v/nice)*(H2-T-B);let s="";
+  [0,nice/2,nice].forEach(v=>{s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1c1e28"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${v.toFixed(v<0.1?2:1)}</text>`});
+  data.forEach((p,i)=>{const last=i===data.length-1;
+    if(p.eth>0)s+=`<rect x="${(L+i*bw+bw*0.18).toFixed(1)}" y="${y(p.eth).toFixed(1)}" width="${(bw*0.64).toFixed(1)}" height="${(H2-B-y(p.eth)).toFixed(1)}" rx="2" fill="${last?"#eab464":"#3a3550"}"><title>${timeFmt(p.at)} · ${p.symbol?"$"+esc(p.symbol)+" · ":""}${ethFmt(p.eth)}</title></rect>`;
+    if(i%4===0||last)s+=`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H2-10}" text-anchor="middle">${new Date(p.at).toLocaleTimeString([],{hour:"numeric"})}</text>`;});
+  s+=`<text x="${L-8}" y="${T-2}" text-anchor="end">ETH</text>`;
+  if(!data.some(d=>d.eth>0))s+=`<text x="${W/2}" y="${H2/2}" text-anchor="middle">No pumps in the last 24 hours</text>`;
+  $("#lBars").innerHTML=s;
+  $("#lBody").innerHTML=Lg.rows.length?Lg.rows.map(p=>`<tr><td class="mono" style="color:var(--mute)">${timeFmt(p.at)}</td>
+    <td><a class="tick" href="#coin-${p.token}" style="text-decoration:none">$${esc(p.symbol)}</a></td><td class="n">${p.eth.toFixed(3)}</td>
+    <td class="n">${p.preUsd!=null?money(p.preUsd)+" → "+(p.postUsd!=null?money(p.postUsd):"…"):"–"}</td><td class="n ${p.move!=null&&p.move<0?"down":"up"}">${p.move==null?"…":(p.move>=0?"+":"")+p.move+"%"}</td>
+    <td>${p.tx?(S.live?`<a class="hash" href="${Lg.explorer}/tx/${p.tx}" target="_blank" rel="noopener">${short(p.tx)} ↗</a>`:`<span class="hash">${short(p.tx)}</span>`):"–"}</td></tr>`).join("")
+    :'<tr><td colspan="6" class="empty">No pumps yet.</td></tr>';
+  renderHomeLog();
+}
+async function loadLog(){if(!S.live){S.log=SAMPLE.log;renderLog();return}try{S.log=await api("/api/log");renderLog()}catch(e){}}
+
+/* ---------------- router ---------------- */
+const PAGES=["home","coin","graveyard","log","how"];
+function go(h){if(location.hash==="#"+h)route();else location.hash=h}
+function show(p){
+  document.querySelectorAll("main[data-page]").forEach(m=>m.hidden=m.dataset.page!==p);
+  document.querySelectorAll("[data-nav]").forEach(a=>{if(a.dataset.nav===(p==="coin"?"home":p))a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  sceneOn=p==="home";if(sceneOn){size();requestAnimationFrame(frame)}
+  scrollTo({top:0});
+}
+function route(){
+  const h=location.hash.slice(1);
+  if(h.startsWith("coin-")){openCoin(h.slice(5));return}
+  if(h==="ballot"){show("home");$("#ballot").scrollIntoView();return}
+  if(h==="coin"&&S.round?.leader){openCoin(S.round.leader);return}
+  const p=PAGES.includes(h)?h:"home";show(p);
+  if(p==="graveyard")loadGraveyard();if(p==="log")loadLog();
+}
+addEventListener("hashchange",route);
+
+/* ---------------- clock ---------------- */
+function tick(){
+  const n=Date.now(),R=S.round,pumpsAt=R?.pumpsAt||Math.ceil(n/HR)*HR,opensAt=R?.opensAt||pumpsAt-HR,locksAt=R?.locksAt||opensAt+50*60000;
+  if(n>=pumpsAt&&S.live&&!tick.busy){tick.busy=true;loadRound().finally(()=>tick.busy=false)}
+  const ms=Math.max(0,pumpsAt-n),m=Math.floor(ms/6e4),s=Math.floor(ms/1e3)%60;
+  $("#clock").innerHTML=`${String(m).padStart(2,"0")}<span>:</span>${String(s).padStart(2,"0")}`;
+  $("#prog").style.width=Math.min(100,(n-opensAt)/HR*100).toFixed(2)+"%";
+  $("#phase").textContent=n>=locksAt?"Locked · pumping at :00":"Voting open";
+}
+
+/* ---------------- loading ---------------- */
+async function loadRound(){
+  if(!S.live){S.round=SAMPLE.round;renderRound();return}
+  try{S.round=await api("/api/round");renderRound()}catch(e){console.warn(e)}
+}
+async function boot(){
+  try{const c=await fetch("/api/config",{cache:"no-store"});if(c.ok){const j=await c.json();if(j.chainId===4663){S.live=true;S.cfg=j}}}catch(e){}
+  if(S.auth&&(!S.auth.exp||S.auth.exp<Date.now()))S.auth=null;
+  renderConnect();
+  if(S.live){
+    $("#footNote").textContent="Necro is unaudited. A pump is a buy, not a guarantee. Not investment advice.";
+    $("#afterBuyText").textContent=S.cfg.afterBuy==="burn"?"Burned forever, sent to the dead address":"Held in the public pump wallet";
+    $("#afterBuyTbd").hidden=true;
+    if(S.cfg.pumpWallet){$("#pumpAddr").textContent=S.cfg.pumpWallet}
+  }
+  await loadRound();loadLog();
+  route();tick();setInterval(tick,1000);
+  if(S.live)setInterval(()=>{if(!document.hidden){loadRound();if(!$("main[data-page=log]").hidden)loadLog()}},30000);
+}
+/* ---------------- living pixel graveyard ---------------- */
+const cv=$("#scene"),cx=cv.getContext("2d");
+const P=4;let W=0,H=0,stars=[],flies=[],graveX=[],t0=performance.now(),sceneOn=true,raf=0;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function hash(n){n=Math.sin(n*127.1)*43758.5453;return n-Math.floor(n)}
+function size(){
+  const r=cv.getBoundingClientRect();if(!r.width)return;
+  W=Math.ceil(r.width/P);H=Math.ceil(r.height/P);cv.width=W;cv.height=H;
+  stars=[];for(let i=0;i<Math.floor(W*H/260);i++)stars.push({x:Math.floor(hash(i)*W),y:Math.floor(hash(i+99)*H*0.6),p:hash(i+7)*6.28,b:hash(i+3)});
+  flies=[];for(let i=0;i<7;i++)flies.push({x:hash(i+40)*W,y:H*0.6+hash(i+50)*H*0.3,p:hash(i+60)*6.28});
+  const n=Math.max(5,Math.floor(W/30));graveX=[];
+  for(let i=0;i<n;i++)graveX.push({x:Math.floor(W*0.38+(W*0.6)*(i/(n-1))+(hash(i+5)-.5)*8),k:hash(i+11)>.55?1:0,s:0.8+hash(i+21)*0.5});
+}
+const R=(x,y,w,h,c)=>{cx.fillStyle=c;cx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))};
+const ground=x=>H*0.80+Math.sin(x*0.05)*1.5;
+const hill=(x,base,amp,f,o)=>base+Math.sin(x*f+o)*amp+Math.sin(x*f*2.3+o*2)*amp*0.4;
+function drawStone(g,leadI,i,t){
+  const gy=Math.floor(ground(g.x)),w=Math.round(9*g.s),h=Math.round(12*g.s),x=g.x-Math.floor(w/2),y=gy-h,lead=i===leadI;
+  const body=lead?"#3d3856":"#22242f",hi=lead?"#5a5380":"#30333f",lo="#16171f";
+  if(g.k===0){
+    R(x+2,y,w-4,1,body);R(x+1,y+1,w-2,1,body);R(x,y+2,w,h-2,body);
+    R(x,y+2,1,h-2,hi);R(x+1,y+1,1,1,hi);R(x+w-1,y+2,1,h-2,lo);
+    R(x+Math.floor(w/2)-1,y+3,2,1,lead?"#eab464":"#454858");R(x+2,y+5,w-4,1,lead?"#8a7a52":"#2f323e");R(x+2,y+7,w-5,1,lead?"#8a7a52":"#2f323e");
+  }else{const m=x+Math.floor(w/2);R(m-1,y,3,h,body);R(x+1,y+3,w-2,3,body);R(m-1,y,1,h,hi);R(x+1,y+3,w-2,1,hi)}
+  if(lead){
+    const fl=0.6+0.4*Math.sin(t*0.012)+0.15*Math.sin(t*0.031);
+    cx.fillStyle="#eab464";[[18,.06],[11,.09],[6,.14]].forEach(([r,a])=>{cx.globalAlpha=a*fl;cx.beginPath();cx.arc(g.x+w/2+3,gy-5,r,0,6.29);cx.fill()});cx.globalAlpha=1;
+    R(g.x+w/2+2,gy-4,2,4,"#e8e2d0");R(g.x+w/2+2,gy-6,2,2,fl>0.8?"#fff1c6":"#eab464");
+    const cyc=(t/1000)%9,up=cyc<1.2?cyc/1.2:cyc<5?1:cyc<6?1-(cyc-5):0;
+    if(up>0){const hy=gy-Math.round(up*9),hx=g.x-w-6;
+      cx.save();cx.beginPath();cx.rect(hx-2,0,14,gy);cx.clip();
+      const c="#8ccc9f",d="#5a8f69";
+      R(hx,hy+1,1,3,c);R(hx+2,hy,1,4,c);R(hx+4,hy,1,4,c);R(hx+6,hy+2,1,3,c);R(hx+1,hy+3,5,4,c);R(hx+2,hy+7,3,6,c);R(hx+2,hy+5,1,1,d);R(hx+4,hy+6,1,1,d);
+      cx.restore();R(hx-1,gy,9,1,"#3a2f20");R(hx+1,gy-1,1,1,"#3a2f20");R(hx+6,gy-1,1,1,"#3a2f20");}
+  }
+}
+function tree(x,base){const c="#0d0c15";R(x,base-34,3,34,c);R(x+1,base-44,2,10,c);
+  [[-1,-30,-10,-38],[2,-26,12,-36],[1,-38,-6,-46],[2,-40,9,-48],[-8,-36,-13,-40],[10,-34,15,-39]].forEach(([a,b,c2,d])=>{const st=Math.max(Math.abs(c2-a),Math.abs(d-b));for(let i=0;i<=st;i++)R(x+a+(c2-a)*i/st,base+b+(d-b)*i/st,1,1,c)})}
+function frame(now){
+  if(!sceneOn||!W)return;
+  const t=now-t0,bands=["#08070f","#0b0a15","#0f0d1c","#141127","#1a1531","#221a3c","#2a2047"],hz=H*0.72;
+  for(let i=0;i<bands.length;i++)R(0,Math.floor(hz*i/bands.length),W,Math.ceil(hz/bands.length)+1,bands[i]);
+  stars.forEach(s=>{cx.globalAlpha=0.35+0.65*Math.abs(Math.sin(s.p+t*0.0012*(0.3+s.b)));R(s.x,s.y,1,1,s.b>.9?"#eab464":"#d9d6ea")});cx.globalAlpha=1;
+  const mx=Math.floor(W*0.80),my=Math.floor(H*0.24),mr=Math.max(9,Math.floor(H*0.075));
+  cx.globalAlpha=0.07;cx.fillStyle="#cfc6ff";for(let r=mr*3;r>mr;r-=mr*0.5){cx.beginPath();cx.arc(mx,my,r,0,6.29);cx.fill()}cx.globalAlpha=1;
+  for(let yy=-mr;yy<=mr;yy++){const w=Math.floor(Math.sqrt(mr*mr-yy*yy));R(mx-w,my+yy,w*2,1,"#ecebf3")}
+  R(mx-mr*0.4,my-mr*0.3,3,2,"#cfcbe0");R(mx+mr*0.2,my+mr*0.2,4,3,"#cfcbe0");R(mx-mr*0.1,my+mr*0.5,2,2,"#cfcbe0");
+  for(let x=0;x<W;x++){const yy=hill(x,H*0.64,4,0.03,1);R(x,yy,1,H-yy,"#13111f")}
+  for(let x=0;x<W;x++){const yy=hill(x,H*0.71,3,0.045,4);R(x,yy,1,H-yy,"#0f0e18")}
+  for(let i=0;i<3;i++){const fx=((t*0.004*(i+1)+i*120)%(W+160))-160,fy=H*(0.66+i*0.05);cx.globalAlpha=0.06;R(fx,fy,160,4,"#b6aee6");R(fx+20,fy-2,110,2,"#b6aee6");R(fx+30,fy+4,90,2,"#b6aee6");cx.globalAlpha=1}
+  for(let x=0;x<W;x++){const yy=ground(x);R(x,yy,1,H-yy,"#0c0b12");if(hash(x*3.1)>.82)R(x,yy-1,1,1,"#1d2a22")}
+  tree(Math.floor(W*0.10),Math.floor(ground(W*0.1)));
+  const f0=Math.floor(W*0.30);for(let x=f0;x<W;x+=5){const gy=ground(x);R(x,gy-9,1,9,"#15141e");R(x,gy-10,1,1,"#1d1c29")}R(f0,ground(f0)-7,W-f0,1,"#15141e");
+  const leadI=Math.min(graveX.length-1,Math.floor(graveX.length*0.55));graveX.forEach((g,i)=>drawStone(g,leadI,i,t));
+  flies.forEach(f=>{const x=f.x+Math.sin(t*0.0007+f.p)*14,yy=f.y+Math.cos(t*0.0011+f.p)*6,a=0.4+0.6*Math.max(0,Math.sin(t*0.003+f.p*3));cx.globalAlpha=a*0.25;R(x-1,yy-1,3,3,"#eab464");cx.globalAlpha=a;R(x,yy,1,1,"#ffe1a3")});
+  cx.globalAlpha=1;
+  if(!reduce){cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}
+}
+addEventListener("resize",()=>{size();if(reduce)frame(performance.now())});
+
+/* ---------------- site-wide night sky ---------------- */
+(function(){
+  const c=$("#sky"),x=c.getContext("2d"),S=5;let w=0,h=0,st=[],fl=[],sil=[],last=0;
+  const hs=n=>{n=Math.sin(n*91.7)*43758.5453;return n-Math.floor(n)};
+  const F=(a,b,cw,ch,col)=>{x.fillStyle=col;x.fillRect(Math.round(a),Math.round(b),Math.round(cw),Math.round(ch))};
+  function fit(){
+    w=Math.ceil(innerWidth/S);h=Math.ceil(innerHeight/S);c.width=w;c.height=h;
+    st=[];for(let i=0;i<Math.floor(w*h/320);i++)st.push({x:hs(i)*w|0,y:(hs(i+500)*h*0.78)|0,p:hs(i+9)*6.28,b:hs(i+31)});
+    fl=[];for(let i=0;i<9;i++)fl.push({x:hs(i+70)*w,y:h*0.8+hs(i+80)*h*0.15,p:hs(i+90)*6.28});
+    sil=[];let px=0,i=0;while(px<w){const k=hs(i+200);sil.push({x:px,k:k<.55?0:k<.8?1:k<.93?2:3,s:.7+hs(i+300)*.6});px+=6+hs(i+400)*14;i++}
+  }
+  function base(xx){return h*0.9+Math.sin(xx*0.035)*2+Math.sin(xx*0.11)*1}
+  function draw(t){
+    // sky gradient in pixel bands
+    const cols=["#07060d","#09081a","#0c0a20","#100c27","#140f2e","#181233","#1c1436","#1a1230","#120e22","#0b0a14"];
+    const bh=h/cols.length;cols.forEach((col,i)=>F(0,i*bh,w,bh+1,col));
+    // dithered band edges
+    for(let i=1;i<cols.length;i++){const y=Math.round(i*bh);for(let xx=(i%2);xx<w;xx+=3)F(xx,y-1,1,1,cols[i])}
+    // aurora ribbon
+    for(let xx=0;xx<w;xx++){const y=h*0.22+Math.sin(xx*0.02+t*0.00012)*6+Math.sin(xx*0.051+t*0.0002)*3;
+      const a=0.05+0.04*Math.sin(xx*0.03+t*0.0003);x.globalAlpha=a;F(xx,y,1,10,"#7d6fd0");x.globalAlpha=a*0.6;F(xx,y+10,1,8,"#4f8f7a")}
+    x.globalAlpha=1;
+    // moon
+    const mx=w*0.84,my=h*0.14,mr=Math.max(7,Math.min(w,h)*0.035);
+    x.fillStyle="#bdb3ff";[[mr*5,.03],[mr*3.2,.05],[mr*1.9,.08]].forEach(([r,a])=>{x.globalAlpha=a;x.beginPath();x.arc(mx,my,r,0,6.29);x.fill()});x.globalAlpha=1;
+    for(let yy=-mr;yy<=mr;yy++){const ww=Math.floor(Math.sqrt(mr*mr-yy*yy));F(mx-ww,my+yy,ww*2,1,"#e9e7f3")}
+    F(mx-mr*.4,my-mr*.2,2,2,"#cbc6df");F(mx+mr*.2,my+mr*.3,3,2,"#cbc6df");
+    // stars
+    st.forEach(s=>{x.globalAlpha=0.15+0.5*Math.abs(Math.sin(s.p+t*0.001*(0.2+s.b)));F(s.x,s.y,1,1,s.b>.97?"#eab464":s.b>.85?"#b9b0ff":"#dcd9ec")});
+    x.globalAlpha=1;
+    // shooting star every ~14s
+    const sc=(t/1000)%14;if(sc<0.8){const k=sc/0.8,sx=w*0.2+k*w*0.25,sy=h*0.08+k*h*0.12;for(let i=0;i<10;i++){x.globalAlpha=(1-i/10)*(1-k);F(sx-i*2,sy-i,1,1,"#ffffff")}x.globalAlpha=1}
+    // distant hills
+    for(let xx=0;xx<w;xx++){const y=h*0.84+Math.sin(xx*0.018+1)*4+Math.sin(xx*0.047)*2;F(xx,y,1,h-y,"#0e0b19")}
+    // church on hill
+    const cxp=Math.floor(w*0.62),cy=Math.floor(h*0.84+Math.sin(cxp*0.018+1)*4+Math.sin(cxp*0.047)*2);
+    F(cxp,cy-10,12,10,"#0e0b19");F(cxp+8,cy-20,4,10,"#0e0b19");F(cxp+9,cy-24,2,4,"#0e0b19");F(cxp+8,cy-23,4,1,"#0e0b19");
+    x.globalAlpha=.5+.3*Math.sin(t*0.002);F(cxp+3,cy-6,2,2,"#eab464");x.globalAlpha=1;
+    // fog
+    for(let i=0;i<4;i++){const fx=((t*0.0025*(i+1)+i*w*0.3)%(w+220))-220,fy=h*(0.8+i*0.035);x.globalAlpha=0.05;F(fx,fy,220,3,"#b6aee6");F(fx+40,fy-2,140,2,"#b6aee6");F(fx+20,fy+3,170,2,"#b6aee6");x.globalAlpha=1}
+    // foreground graveyard silhouette
+    for(let xx=0;xx<w;xx++){const y=base(xx);F(xx,y,1,h-y,"#07060c")}
+    sil.forEach(g=>{const y=Math.floor(base(g.x)),s=g.s,col="#07060c";
+      if(g.k===0){const gw=Math.round(5*s),gh=Math.round(7*s);F(g.x+1,y-gh,gw-2,1,col);F(g.x,y-gh+1,gw,gh-1,col)}
+      else if(g.k===1){const gh=Math.round(9*s);F(g.x+2,y-gh,1,gh,col);F(g.x,y-gh+2,5,1,col)}
+      else if(g.k===2){for(let k=0;k<4;k++){F(g.x+k*3,y-6,1,6,col);F(g.x+k*3,y-7,1,1,"#100e19")}F(g.x,y-4,10,1,col)}
+      else{F(g.x+2,y-22,2,22,col);F(g.x-3,y-16,5,1,col);F(g.x-4,y-17,1,1,col);F(g.x+4,y-13,5,1,col);F(g.x+8,y-14,1,1,col);F(g.x+1,y-20,1,1,col);F(g.x+4,y-21,2,1,col)}
+    });
+    // fireflies
+    fl.forEach(f=>{const fx=f.x+Math.sin(t*0.0006+f.p)*16,fy=f.y+Math.cos(t*0.0009+f.p)*5,a=Math.max(0,Math.sin(t*0.0025+f.p*3));x.globalAlpha=a*0.25;F(fx-1,fy-1,3,3,"#eab464");x.globalAlpha=a;F(fx,fy,1,1,"#ffe1a3")});
+    x.globalAlpha=1;
+  }
+  const red=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function loop(now){if(now-last>50){draw(now);last=now}if(!red)requestAnimationFrame(loop)}
+  fit();addEventListener("resize",()=>{fit();draw(performance.now())});requestAnimationFrame(loop);
+})();
+
+boot();
+</script>
+</body>
+</html>
