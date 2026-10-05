@@ -1,14 +1,11 @@
 import { randomBytes, createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { formatEther, isAddress, parseEther, type Address } from "viem";
-import { ADDR, CONFIG, PONS_FEE } from "./config.js";
-import { publicClient, pumpAccount } from "./chain.js";
-import { type DB, getCursor, kvGet } from "./db.js";
-import { quoteIn } from "./prices.js";
-import { pumpWalletBalance, spentTodayWei } from "./pump.js";
+import { CONFIG } from "./config.js";
+import { type DB, kvGet } from "./db.js";
+import { isAddress, solBalance, tokenBalance, verifySignature } from "./solana.js";
+import { fundLamports, pumpAddress } from "./pump.js";
 import { VoteError, castVote } from "./rounds.js";
-import { pumpBudget } from "./rules.js";
 import { RULES } from "./graves.js";
 import { coinView, graveyardView, logView, roundView } from "./views.js";
 
@@ -16,7 +13,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const SESSION_MS = 7 * 24 * 3_600_000;
 
 export function signInMessage(address: string, nonce: string) {
-  return `Sign in to Necro\n\nWallet: ${address}\nNonce: ${nonce}\n\nThis only proves you own this wallet. It costs nothing and moves no funds.`;
+  return `Sign in to Afterlife\n\nWallet: ${address}\nNonce: ${nonce}\n\nThis only proves you own this wallet. It costs nothing and moves no funds.`;
 }
 
 // Tiny per-IP rate limiter: `max` hits per `windowMs`.
@@ -77,56 +74,52 @@ export function createApi(db: DB) {
     }
   };
 
-  // What one hour's pump can spend right now (the "pump fund" on the site).
+  // What one hour's pump can spend right now (the "pump fund" on the site), in SOL.
   const fund = cached(30_000, async () => {
-    const bal = await pumpWalletBalance().catch(() => null);
-    if (!bal) return null;
-    const b = pumpBudget({
-      balanceWei: bal.eth + bal.weth, reserveWei: parseEther(String(CONFIG.gasReserveEth)), maxWei: parseEther(String(CONFIG.maxPumpEth)),
-      spentTodayWei: spentTodayWei(db), dailyCapWei: parseEther(String(CONFIG.dailyPumpCapEth)),
-    });
-    return Number(formatEther(b));
+    const l = await fundLamports(db).catch(() => null);
+    return l === null ? null : Number(l) / 1e9;
   });
 
   // ---------- public ----------
-  app.get("/api/config", (_req, res) => {
+  app.get("/api/config", wrap(async (_req, res) => {
     res.json({
-      chainId: CONFIG.chainId, explorer: CONFIG.explorer,
-      devWallet: CONFIG.devWallet, pumpWallet: pumpAccount?.address ?? null, necroToken: CONFIG.necroToken ?? null,
+      chain: "solana", explorer: CONFIG.explorer,
+      devWallet: CONFIG.devWallet || null, pumpWallet: await pumpAddress(), afterMint: CONFIG.afterMint ?? null,
       afterBuy: CONFIG.afterBuy, pumpsEnabled: CONFIG.pumpsEnabled,
-      rules: { ...RULES, ballotSize: CONFIG.ballotSize, voteLockMinute: CONFIG.voteLockMinute, pumpChunks: CONFIG.pumpChunks, maxPumpEth: CONFIG.maxPumpEth },
+      rules: { ...RULES, ballotSize: CONFIG.ballotSize, voteLockMinute: CONFIG.voteLockMinute, pumpChunks: CONFIG.pumpChunks, maxPumpSol: CONFIG.maxPumpSol },
     });
-  });
+  }));
 
   app.get("/api/round", limiter(120, 60_000), wrap(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.json(roundView(db, Date.now(), sessionAddress(req) ?? undefined, await fund()));
   }));
 
-  const simCache = new Map<string, { at: number; v: unknown }>();
-  app.get("/api/coin/:token", limiter(120, 60_000), wrap(async (req, res) => {
-    const token = String(req.params.token).toLowerCase();
-    if (!isAddress(token)) return res.status(400).json({ error: "bad_address", message: "That isn't a coin address." });
-    const view = coinView(db, token);
-    if (!view) return res.status(404).json({ error: "not_found", message: "No grave for that coin. It may still be alive, or it never traded." });
-    // "If it wins this hour": quote the current fund into the coin's pool.
-    let sim = simCache.get(token);
-    if (!sim || Date.now() - sim.at > 120_000) {
-      const f = (await fund()) ?? CONFIG.maxPumpEth;
-      let v: unknown = null;
-      try {
-        const amt = parseEther(f.toFixed(6));
-        const { out } = await quoteIn(ADDR.weth, token as Address, amt, PONS_FEE);
-        const small = await quoteIn(ADDR.weth, token as Address, amt / 1000n || 1n, PONS_FEE);
-        // Average price paid vs. the price for a tiny buy. The price after the buy is roughly twice that gap.
-        const avgPerToken = Number(amt) / Number(out), spot = Number(amt / 1000n || 1n) / Number(small.out);
-        const move = Math.max(0, Math.round(((avgPerToken / spot - 1) * 2) * 100));
-        v = { fundEth: f, estMovePct: move, estMcapUsd: view.nowUsd * (1 + move / 100) };
-      } catch { v = null; }
-      sim = { at: Date.now(), v };
-      simCache.set(token, sim);
-    }
-    res.json({ ...view, sim: sim.v });
+  // Daily chart for a coin page, from GeckoTerminal (cached 6 hours per pool).
+  const charts = new Map<string, { at: number; v: Array<{ t: number; usd: number }> }>();
+  async function chart(pool: string | null, supplyMcap: (p: number) => number) {
+    if (!pool) return [];
+    const hit = charts.get(pool);
+    if (hit && Date.now() - hit.at < 6 * 3_600_000) return hit.v;
+    try {
+      const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${pool}/ohlcv/day?limit=200&currency=usd`, { signal: AbortSignal.timeout(10_000) });
+      const j = (await r.json()) as { data?: { attributes?: { ohlcv_list?: number[][] } } };
+      const v = (j.data?.attributes?.ohlcv_list ?? []).map((x) => ({ t: x[0] * 1000, usd: supplyMcap(x[4]) })).reverse();
+      charts.set(pool, { at: Date.now(), v });
+      return v;
+    } catch { return []; }
+  }
+
+  app.get("/api/coin/:mint", limiter(120, 60_000), wrap(async (req, res) => {
+    const mint = String(req.params.mint);
+    if (!isAddress(mint)) return res.status(400).json({ error: "bad_address", message: "That isn't a coin address." });
+    const view = coinView(db, mint);
+    if (!view) return res.status(404).json({ error: "not_found", message: "No grave for that coin. It may still be alive, or it never bonded." });
+    // pump.fun coins have 1B supply, so market cap = price x 1e9.
+    const history = await chart(view.pool, (p) => p * 1e9);
+    const f = await fund();
+    const sim = f && view.poolSol ? { fundSol: f, estMovePct: Math.round(((1 + f / view.poolSol) ** 2 - 1) * 100), estMcapUsd: view.nowUsd * (1 + f / view.poolSol) ** 2 } : null;
+    res.json({ ...view, history, sim });
   }));
 
   app.get("/api/graveyard", limiter(120, 60_000), wrap((req, res) => {
@@ -137,71 +130,62 @@ export function createApi(db: DB) {
 
   // Every setting, shown as set or missing. A missing setting is shown as missing, never as green.
   app.get("/api/status", wrap(async (_req, res) => {
-    const head = await publicClient.getBlockNumber().catch(() => null);
-    const counts = db.prepare(`SELECT (SELECT COUNT(*) FROM coins) AS coins,
-      (SELECT COUNT(*) FROM coins WHERE pool_checked_at IS NOT NULL) AS poolsChecked,
-      (SELECT COUNT(*) FROM coins WHERE watched = 1) AS poolsWithEth,
-      (SELECT COUNT(*) FROM coins WHERE backfill_to IS NOT NULL) AS backfillQueue,
-      (SELECT COUNT(*) FROM market) AS marketChecked,
-      (SELECT COUNT(*) FROM market WHERE price_eth IS NOT NULL AND vol24_eth < ${CONFIG.quietVol24hEth}) AS quietCoins,
-      (SELECT COUNT(*) FROM market WHERE hist_at IS NOT NULL) AS historiesRead,
+    const slot = await fetch(CONFIG.rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getSlot" }) })
+      .then((r) => r.json()).then((j: { result?: number }) => j.result ?? null).catch(() => null);
+    const me = await pumpAddress();
+    const counts = db.prepare(`SELECT (SELECT COUNT(*) FROM coins) AS bondedCoins, (SELECT COUNT(*) FROM market) AS marketChecked,
       (SELECT COUNT(*) FROM graves) AS graves, (SELECT COUNT(*) FROM graves WHERE status='ok') AS revivable`).get();
     res.json({
-      rpc: head !== null ? { ok: true, block: head.toString() } : { ok: false, note: "RPC unreachable" },
+      rpc: slot !== null ? { ok: true, slot } : { ok: false, note: "Solana RPC unreachable" },
       settings: {
-        NECRO_DEV_WALLET: CONFIG.devWallet,
-        NECRO_TOKEN: CONFIG.necroToken ?? "MISSING — $NECRO not launched yet, voting runs in practice mode (1 wallet = 1 vote)",
-        PUMP_PRIVATE_KEY: pumpAccount ? `set (wallet ${pumpAccount.address})` : "MISSING — the pump bot is off",
+        SOLANA_RPC_URL: /api-key|api_key|helius/i.test(CONFIG.rpcUrl) ? "set (private RPC)" : "public RPC — set a Helius URL, the public one throttles",
+        DEV_WALLET: CONFIG.devWallet || "MISSING — the wallet that launches $AFTER",
+        AFTER_MINT: CONFIG.afterMint ?? "MISSING — $AFTER not launched yet, voting runs in practice mode (1 wallet = 1 vote)",
+        PUMP_PRIVATE_KEY: me ? `set (wallet ${me})` : "MISSING — the pump bot is off",
         PUMPS_ENABLED: CONFIG.pumpsEnabled ? "on" : "off — the bot won't send any buys",
-        AFTER_BUY: CONFIG.afterBuy === "burn" ? "burn (bought coins go to the dead address)" : "hold (bought coins stay in the pump wallet)",
+        AFTER_BUY: CONFIG.afterBuy === "burn" ? "burn (bought coins are burned on-chain)" : "hold (bought coins stay in the pump wallet)",
         ALERT_WEBHOOK_URL: CONFIG.alertWebhook ? "set" : "MISSING — alerts only go to the server log",
-        MAX_PUMP_ETH: CONFIG.maxPumpEth, DAILY_PUMP_CAP_ETH: CONFIG.dailyPumpCapEth, MAX_SLIPPAGE_BPS: CONFIG.maxSlippageBps,
+        MAX_PUMP_SOL: CONFIG.maxPumpSol, DAILY_PUMP_CAP_SOL: CONFIG.dailyPumpCapSol, MAX_SLIPPAGE_BPS: CONFIG.maxSlippageBps,
       },
-      scanner: {
-        launches: getCursor(db, "launches")?.toString() ?? null,
-        swaps: getCursor(db, "swaps")?.toString() ?? null,
-        necro: getCursor(db, "necro")?.toString() ?? null,
-        gravesCheckedAt: Number(kvGet(db, "graves_evaluated_at") ?? 0) || null,
-        ethUsd: Number(kvGet(db, "eth_usd") ?? 0) || null,
-        ...(counts as object),
-      },
-      fundEth: await fund(),
+      data: { ...(counts as object), pumpfunSyncedAt: Number(kvGet(db, "pumpfun_synced_at") ?? 0) || null, gravesCheckedAt: Number(kvGet(db, "graves_evaluated_at") ?? 0) || null, solUsd: Number(kvGet(db, "sol_usd") ?? 0) || null },
+      pumpWalletSol: me ? Number(await solBalance(me).catch(() => 0n)) / 1e9 : null,
+      fundSol: await fund(),
     });
   }));
 
   // ---------- sign in with wallet ----------
   app.post("/api/auth/nonce", limiter(20, 60_000), wrap((req, res) => {
     const address = String(req.body?.address ?? "");
-    if (!isAddress(address)) return res.status(400).json({ error: "bad_address", message: "That isn't a valid wallet address." });
+    if (!isAddress(address)) return res.status(400).json({ error: "bad_address", message: "That isn't a valid Solana wallet address." });
     const nonce = randomBytes(16).toString("hex");
     db.prepare("DELETE FROM nonces WHERE expires < ?").run(Date.now());
-    db.prepare("INSERT INTO nonces (nonce, address, expires) VALUES (?, ?, ?)").run(nonce, address.toLowerCase(), Date.now() + 10 * 60_000);
+    db.prepare("INSERT INTO nonces (nonce, address, expires) VALUES (?, ?, ?)").run(nonce, address, Date.now() + 10 * 60_000);
     res.json({ nonce, message: signInMessage(address, nonce) });
   }));
 
-  app.post("/api/auth/verify", limiter(20, 60_000), wrap(async (req, res) => {
+  app.post("/api/auth/verify", limiter(20, 60_000), wrap((req, res) => {
     const { address, nonce, signature } = req.body ?? {};
     if (!isAddress(address) || typeof nonce !== "string" || typeof signature !== "string") {
       return res.status(400).json({ error: "bad_request", message: "Missing address, nonce or signature." });
     }
     const row = db.prepare("SELECT address, expires FROM nonces WHERE nonce = ?").get(nonce) as { address: string; expires: number } | undefined;
     db.prepare("DELETE FROM nonces WHERE nonce = ?").run(nonce); // single use
-    if (!row || row.expires < Date.now() || row.address !== address.toLowerCase()) {
+    if (!row || row.expires < Date.now() || row.address !== address) {
       return res.status(400).json({ error: "expired", message: "That sign-in request expired. Try connecting again." });
     }
-    const ok = await publicClient.verifyMessage({ address: address as Address, message: signInMessage(address, nonce), signature: signature as `0x${string}` });
-    if (!ok) return res.status(401).json({ error: "bad_signature", message: "The signature didn't match this wallet." });
+    if (!verifySignature(address, signInMessage(address, nonce), signature)) return res.status(401).json({ error: "bad_signature", message: "The signature didn't match this wallet." });
     const token = randomBytes(32).toString("hex");
-    db.prepare("INSERT INTO sessions (token_hash, address, expires) VALUES (?, ?, ?)").run(sha(token), address.toLowerCase(), Date.now() + SESSION_MS);
-    res.json({ token, address: address.toLowerCase(), expiresInMs: SESSION_MS });
+    db.prepare("INSERT INTO sessions (token_hash, address, expires) VALUES (?, ?, ?)").run(sha(token), address, Date.now() + SESSION_MS);
+    res.json({ token, address, expiresInMs: SESSION_MS });
   }));
 
   // ---------- voting ----------
-  app.post("/api/vote", auth, limiter(30, 60_000), wrap((req, res) => {
-    const token = String(req.body?.token ?? "");
-    if (!isAddress(token)) return res.status(400).json({ error: "bad_token", message: "Pick a coin from the ballot." });
-    const v = castVote(db, res.locals.address, token);
-    res.json({ ok: true, token: v.token, weight: v.weight.toString(), round: roundView(db, Date.now(), res.locals.address) });
+  const weightOf = (a: string) => (CONFIG.afterMint ? tokenBalance(a, CONFIG.afterMint) : Promise.resolve(1n));
+  app.post("/api/vote", auth, limiter(30, 60_000), wrap(async (req, res) => {
+    const mint = String(req.body?.token ?? "");
+    if (!isAddress(mint)) return res.status(400).json({ error: "bad_token", message: "Pick a coin from the ballot." });
+    const v = await castVote(db, res.locals.address, mint, weightOf);
+    res.json({ ok: true, token: v.mint, weight: v.weight.toString(), round: roundView(db, Date.now(), res.locals.address) });
   }));
 
   // The website itself (public/index.html), served from the same address as the API.

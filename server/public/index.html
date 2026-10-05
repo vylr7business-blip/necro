@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Every hour, $NECRO holders vote on ten dead Robinhood Chain coins. At the top of the hour, the trading fees buy the winner back from the grave.">
+<meta name="description" content="Every hour, $AFTER holders vote on ten dead pump.fun coins. At the top of the hour, the creator fees buy the winner back from the grave and burn it.">
 <meta name="theme-color" content="#08080c">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<title>Necro</title>
+<title>Afterlife</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Silkscreen&display=swap">
 <style>
@@ -316,7 +316,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
 <canvas id="sky" aria-hidden="true"></canvas>
 <header class="nav">
   <div class="wrap">
-    <a class="mark" href="#home"><canvas id="mk" width="8" height="10" aria-hidden="true"></canvas>NECRO</a>
+    <a class="mark" href="#home"><canvas id="mk" width="8" height="10" aria-hidden="true"></canvas>AFTERLIFE</a>
     <nav class="links" aria-label="Pages">
       <a href="#home" data-nav="home">Séance</a>
       <a href="#graveyard" data-nav="graveyard">Graveyard</a>
@@ -324,8 +324,8 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       <a href="#how" data-nav="how">How it works</a>
     </nav>
     <div class="navr">
-      <span class="live"><span class="dot"></span>Robinhood Chain</span>
-      <a class="xbtn" href="https://x.com/Necro_RH" target="_blank" rel="noopener" aria-label="Necro on X" title="@Necro_RH on X">
+      <span class="live"><span class="dot"></span>Solana · pump.fun</span>
+      <a class="xbtn" href="https://x.com/Necro_RH" target="_blank" rel="noopener" aria-label="Afterlife on X" title="Afterlife on X">
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
       </a>
       <button class="btn line" id="connect">Connect wallet</button>
@@ -342,7 +342,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <div class="copy">
       <div class="eyebrow"><span class="pill" id="modePill">PREVIEW</span><span id="modeText">Sample data</span></div>
       <h1>Every hour,<br>one coin <i>rises.</i></h1>
-      <p>$NECRO holders vote on ten dead coins. At the top of every hour, the trading fees buy the winner back from the grave.</p>
+      <p>$AFTER holders vote on ten dead pump.fun coins. At the top of every hour, the fees buy the winner back from the grave, then burn it.</p>
       <div class="ctas">
         <a class="btn primary lg" href="#ballot" id="toBallot">Cast your vote</a>
         <a class="btn glass lg" href="#how">How it works</a>
@@ -359,7 +359,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     </div>
     <div class="cell">
       <span class="label">Pump fund</span>
-      <div class="big gold" id="fund">0.18 ETH</div>
+      <div class="big gold" id="fund">1.20 SOL</div>
       <p class="sub" id="fundSub">Fees collected this hour, spent in 5 small buys at the top of the hour.</p>
     </div>
     <div class="cell">
@@ -451,7 +451,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
 <main data-page="graveyard" hidden>
   <section class="ptitle">
     <span class="eyebrow">The Graveyard</span>
-    <h1>Every dead coin on <i>Robinhood Chain.</i></h1>
+    <h1>Every coin that bonded <i>and died.</i></h1>
     <p>We watch every coin on the chain. When one dies, it gets a grave here. Only the few that can still be bought safely make the ballot.</p>
   </section>
 
@@ -501,18 +501,18 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
   </section>
   <div class="strip">
     <div><span class="label">Pumps run</span><b class="mono" id="lPumps">–</b><span class="sub">Since launch</span></div>
-    <div><span class="label">ETH spent</span><b class="mono gold" id="lEth">–</b><span class="sub">All from trading fees</span></div>
+    <div><span class="label">SOL spent</span><b class="mono gold" id="lEth">–</b><span class="sub">All from trading fees</span></div>
     <div><span class="label">Avg move</span><b class="mono up" id="lAvg">–</b><span class="sub">About an hour after the buy</span></div>
     <div><span class="label">Coins raised</span><b class="mono" id="lCoins">–</b><span class="sub">Different coins</span></div>
   </div>
   <section class="block" style="margin-top:56px">
-    <div class="head"><div><h2>Last 24 hours</h2><p>ETH spent on each hour's pump.</p></div></div>
-    <div class="card"><svg class="chart bars" id="lBars" viewBox="0 0 720 220" role="img" aria-label="ETH spent per pump over the last 24 hours"></svg></div>
+    <div class="head"><div><h2>Last 24 hours</h2><p>SOL spent on each hour's pump.</p></div></div>
+    <div class="card"><svg class="chart bars" id="lBars" viewBox="0 0 720 220" role="img" aria-label="SOL spent per pump over the last 24 hours"></svg></div>
   </section>
   <section class="block" style="margin-top:56px">
     <div class="panel tablewrap">
       <table>
-        <thead><tr><th>Time</th><th>Coin</th><th class="n">ETH bought</th><th class="n">Before → 1h after</th><th class="n">Move</th><th>Transaction</th></tr></thead>
+        <thead><tr><th>Time</th><th>Coin</th><th class="n">SOL spent</th><th class="n">Before → 1h after</th><th class="n">Move</th><th>Transaction</th></tr></thead>
         <tbody id="lBody"></tbody>
       </table>
     </div>
@@ -524,7 +524,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
   <section class="ptitle">
     <span class="eyebrow">How it works</span>
     <h1>One hour, <i>one resurrection.</i></h1>
-    <p>Necro runs the same ritual 24 times a day. Here's every step, and the rules that keep it fair.</p>
+    <p>Afterlife runs the same ritual 24 times a day. Here's every step, and the rules that keep it fair.</p>
   </section>
 
   <section class="panel timeline" aria-label="One round">
@@ -536,19 +536,19 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       <div class="tk" style="left:calc(100% - 1px)"><span>:00</span></div>
     </div>
     <div class="steps">
-      <div><span class="n">:00</span><h4>Snapshot</h4><p>A new ballot of ten opens and everyone's $NECRO balance is recorded.</p></div>
-      <div><span class="n">:00 – :50</span><h4>Vote</h4><p>Holders vote. More $NECRO means a heavier vote, based on the snapshot.</p></div>
-      <div><span class="n">:50</span><h4>Lock</h4><p>Voting closes and the winner is set. No more changes.</p></div>
-      <div><span class="n">:00 – :05</span><h4>Pump</h4><p>The hour's fees buy the winner in five small buys to limit slippage.</p></div>
+      <div><span class="n">:00</span><h4>Ballot</h4><p>A new ballot of ten dead pump.fun coins opens.</p></div>
+      <div><span class="n">:00 – :50</span><h4>Vote</h4><p>Holders vote for free. More $AFTER means a heavier vote.</p></div>
+      <div><span class="n">:50</span><h4>Lock</h4><p>Voting closes, balances are re-checked, and the winner is set.</p></div>
+      <div><span class="n">:00 – :05</span><h4>Pump + burn</h4><p>The hour's fees buy the winner in five small buys, then the tokens are burned on-chain.</p></div>
     </div>
   </section>
 
   <section class="block">
-    <div class="head"><div><h2>Where the fees go</h2><p>Every $NECRO trade pays a fee. All of it funds the next pump.</p></div></div>
+    <div class="head"><div><h2>Where the fees go</h2><p>Every $AFTER trade on pump.fun pays creator fees in SOL. They fund the next pump.</p></div></div>
     <div class="panel flow">
-      <div class="node"><b>$NECRO trades</b><small>Every buy and sell pays a fee</small></div>
+      <div class="node"><b>$AFTER trades</b><small>Every buy and sell pays a creator fee</small></div>
       <span class="arrow">→</span>
-      <div class="node"><b>Necro dev wallet → pump wallet</b><small>Fees land in the Necro dev wallet, then move to a separate wallet that only the bot uses</small></div>
+      <div class="node"><b>Dev wallet → pump wallet</b><small>Fees land in the dev wallet, then move to a separate wallet that only the bot uses</small></div>
       <span class="arrow">→</span>
       <div class="node"><b>Winning coin bought</b><small id="afterBuyText">Burned or held</small><span class="tbd" id="afterBuyTbd"><span class="pill">TBD</span><small>Decided before launch</small></span></div>
     </div>
@@ -557,9 +557,9 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
   <section class="block">
     <div class="head"><div><h2>What makes a coin revivable</h2><p>Thousands of coins die. Only the ones that pass all four checks reach the ballot.</p></div></div>
     <div class="panel rules">
-      <div class="rule"><span class="n">01</span><h4>ETH left in the pool</h4><p>The pool needs some ETH left so a buy actually moves the price and can be sold back.</p></div>
+      <div class="rule"><span class="n">01</span><h4>SOL left in the pool</h4><p>The PumpSwap pool needs at least 1 SOL so a buy actually moves the price and can be sold back.</p></div>
       <div class="rule"><span class="n">02</span><h4>Dev holds under 2%</h4><p>So a pump never turns into the dev's exit.</p></div>
-      <div class="rule"><span class="n">03</span><h4>Dead a week, sell-tested</h4><p>It has to stay dead for 7 days, and a test sale has to go through, so no honeypots.</p></div>
+      <div class="rule"><span class="n">03</span><h4>Bonded, then died</h4><p>It bonded on pump.fun, then fell 90%+ from an all-time high set at least 7 days ago, and went quiet.</p></div>
       <div class="rule"><span class="n">04</span><h4>One pump a day</h4><p>A winner sits out 24 hours so the ballot keeps moving.</p></div>
     </div>
   </section>
@@ -568,34 +568,34 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <div class="head"><div><h2>Questions</h2></div></div>
     <div class="card faq">
       <details><summary>Why isn't my coin on the ballot?</summary><p>It failed at least one of the four checks. Search it in the Graveyard and you'll see exactly which one.</p></details>
-      <details><summary>How are votes counted?</summary><p>Your vote is weighted by how much $NECRO you held when the round opened. Buying after the snapshot doesn't add weight until the next round.</p></details>
+      <details><summary>How are votes counted?</summary><p>By how much $AFTER you hold. It's checked when you vote and again when voting closes at :50, and you get the smaller number, so buying, voting and selling doesn't work.</p></details>
       <details><summary>Can the same coin win every hour?</summary><p>No. A winner sits out for 24 hours before it can return to the ballot.</p></details>
       <details><summary>Does a pump guarantee the coin goes up?</summary><p>No. It's a real buy, so it adds buying pressure, but the price after that depends on the market. Small funds mean small moves.</p></details>
-      <details><summary>Can I check where the money went?</summary><p>Yes. Every pump is listed in the Pump log with its transaction on the Robinhood Chain explorer. Both wallets are public: the Necro dev wallet that collects the fees, <span class="mono" id="devAddr">set at launch</span>, and the pump wallet that makes the buys, <span class="mono" id="pumpAddr">set at launch</span>.</p></details>
-      <details><summary>Which coins can be on the ballot?</summary><p>Coins launched on pons that peaked above $10K, then fell 90% or more and went quiet. pons pools are locked, so their liquidity can't be pulled.</p></details>
+      <details><summary>Can I check where the money went?</summary><p>Yes. Every pump and every burn is listed in the Pump log with its transaction on Solscan. Both wallets are public: the dev wallet that collects the fees, <span class="mono" id="devAddr">set at launch</span>, and the pump wallet that makes the buys, <span class="mono" id="pumpAddr">set at launch</span>.</p></details>
+      <details><summary>Which coins can be on the ballot?</summary><p>Only pump.fun coins that bonded, peaked above $60K, then fell 90% or more and went quiet, with SOL still in their pool and a dev holding under 2%.</p></details>
     </div>
   </section>
 </main>
 
 <footer>
-  <p id="footNote">Necro is unaudited and in preview. Everything shown is sample data. A pump is a buy, not a guarantee. Not investment advice.</p>
+  <p id="footNote">Afterlife is unaudited and in preview. Everything shown is sample data. A pump is a buy, not a guarantee. Not investment advice.</p>
   <nav aria-label="Footer"><a href="https://x.com/Necro_RH" target="_blank" rel="noopener">X</a><a href="#home">Séance</a><a href="#graveyard">Graveyard</a><a href="#log">Pump log</a><a href="#how">How it works</a></nav>
 </footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <script>
 /* =====================================================================
-   Necro website. Uses the live API when the server hosts this page,
+   Afterlife website. Uses the live API when the server hosts this page,
    and falls back to clearly labeled sample data everywhere else.
    ===================================================================== */
 const $=s=>document.querySelector(s);
 const HR=3600000,DAYMS=24*HR;
 const S={live:false,cfg:null,round:null,coin:null,grave:null,log:null,auth:null,sort:"votes",cause:"all",gFilter:"all",gQuery:"",current:null};
-try{S.auth=JSON.parse(localStorage.getItem("necro-auth")||"null")}catch(e){}
+try{S.auth=JSON.parse(localStorage.getItem("afterlife-auth")||"null")}catch(e){}
 
 /* ---------------- helpers ---------------- */
 const money=n=>n==null||!isFinite(n)?"–":n===0?"$0":n>=1e6?"$"+(n/1e6).toFixed(1)+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+Math.round(n);
-const ethFmt=n=>n==null?"–":(n>=1?n.toFixed(2):n.toFixed(3))+" ETH";
+const ethFmt=n=>n==null?"–":(n>=1?n.toFixed(2):n.toFixed(3))+" SOL";
 const dateFmt=t=>t?new Date(t).toLocaleDateString([],{month:"short",day:"numeric"}):"–";
 const timeFmt=t=>new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -623,16 +623,16 @@ const SAMPLE=(function(){
     return {token,symbol:sym,status:"ok",why:"On the ballot",cause,peakUsd:peak,nowUsd:nw,fall:Math.round((1-nw/peak)*100),holders,poolEth,devPct:dev,
       launchedAt:now-launchDays*DAYMS,diedAt:now-diedDays*DAYMS,parts,score:Object.values(parts).reduce((a,p)=>a+p[0],0),weight:String(votes),voters:votes,pct:Math.round(votes/tot*1000)/10,epitaph:EPITAPHS[i]};
   });
-  const buried=[["RUGZILLA","no","Under 0.05 ETH left in the pool",1.8e6,900],["SAFEMOON3","no","Dev still holds 31.0%",960e3,14e3],["TRAPCOIN","no","Failed the sell test",240e3,6e3],["BONKERS","wait","Pumped 1 hour ago",820e3,31e3],["ZOOMER","wait","Pumped 2 hours ago",450e3,19e3],["FROGGY","fresh","Died 4 days ago, needs 7",310e3,22e3],["DEGENX","no","Under 0.05 ETH left in the pool",2.4e6,1e3],["ROBINRUG","no","Dev still holds 12.0%",700e3,9e3],["GIGABRAIN","no","Under 0.05 ETH left in the pool",380e3,4e3],["NUGGET","wait","Pumped 4 hours ago",290e3,14e3]]
+  const buried=[["RUGZILLA","no","Under 1 SOL left in the pool",1.8e6,900],["SAFEMOON3","no","Dev still holds 31.0%",960e3,14e3],["TRAPCOIN","no","Failed the sell test",240e3,6e3],["BONKERS","wait","Pumped 1 hour ago",820e3,31e3],["ZOOMER","wait","Pumped 2 hours ago",450e3,19e3],["FROGGY","fresh","Died 4 days ago, needs 7",310e3,22e3],["DEGENX","no","Under 1 SOL left in the pool",2.4e6,1e3],["ROBINRUG","no","Dev still holds 12.0%",700e3,9e3],["GIGABRAIN","no","Under 1 SOL left in the pool",380e3,4e3],["NUGGET","wait","Pumped 4 hours ago",290e3,14e3]]
     .map(([sym,status,why,peak,nw],i)=>({token:"0x"+(i+1).toString(16).padStart(40,"b"),symbol:sym,status,why,peakUsd:peak,nowUsd:nw,diedAt:now-(20+i*3)*DAYMS,cause:"fade"}));
   const names=["BONKERS","ZOOMER","CHAD","NUGGET","HOPIUM2","WIFHAT","GROK3","SNEK","BASEDAF","TENDIES","PUMPKIN","OKBOOMER","MEMELORD","DOGEROBIN","FLOKIRH","SIGMA","RIZZ","NGMI","TOPBLAST","DIAMOND","SOYJAK","CATWIF","APU","BOBO"];
   const rnd=seeded("pumplog");
-  const rows=names.map((sym,i)=>{const pre=6e3+rnd()*40e3,mv=0.04+rnd()*0.42,eth=0.11+rnd()*0.13;const h=Array.from({length:4},()=>Math.floor(rnd()*65536).toString(16).padStart(4,"0")).join("");
+  const rows=names.map((sym,i)=>{const pre=6e3+rnd()*40e3,mv=0.04+rnd()*0.42,eth=1.1+rnd()*1.3;const h=Array.from({length:4},()=>Math.floor(rnd()*65536).toString(16).padStart(4,"0")).join("");
     return {at:open-i*HR,token:"0x"+h.padEnd(40,"0"),symbol:sym,eth,preUsd:pre,postUsd:pre*(1+mv),move:Math.round(mv*100),tx:"0x"+h.padEnd(64,"0")}});
   return {
-    round:{live:false,practice:false,opensAt:open,locksAt:open+50*60000,pumpsAt:open+HR,fundEth:0.18,ballot:coins,leader:coins[0].token,spark:(()=>{const r=seeded("spark");let v=61e3;return Array.from({length:24},()=>v=v*(0.92+r()*0.14))})(),myVote:null,voters:tot},
+    round:{live:false,practice:false,opensAt:open,locksAt:open+50*60000,pumpsAt:open+HR,fundEth:1.2,ballot:coins,leader:coins[0].token,spark:(()=>{const r=seeded("spark");let v=61e3;return Array.from({length:24},()=>v=v*(0.92+r()*0.14))})(),myVote:null,voters:tot},
     graveyard:{stats:{buried:3412,revivable:10,cooling:24,today:38},causes:[["Pool nearly empty",1480],["Dev still holds",790],["Failed sell test",286],["Too fresh",110],["Cooling down",24],["Revivable",10]],rows:[...coins,...buried]},
-    log:{stats:{pumps:412,ethSpent:74.6,avgMove:24,coins:187},rows,bars:rows.slice().reverse().map(r=>({at:r.at,eth:r.eth,symbol:r.symbol})),explorer:"https://robinhoodchain.blockscout.com"},
+    log:{stats:{pumps:412,ethSpent:412.6,avgMove:24,coins:187},rows,bars:rows.slice().reverse().map(r=>({at:r.at,eth:r.eth,symbol:r.symbol})),explorer:"https://solscan.io"},
     coin(token){
       const c=coins.find(x=>x.token===token)||buried.find(x=>x.token===token)||coins[0];
       const r=seeded(c.token+"c"),n=70,peakAt=18,start=c.launchedAt||now-60*DAYMS;
@@ -660,14 +660,14 @@ function stone(lead){const c=document.createElement("canvas");c.width=10;c.heigh
 function renderRound(){
   const R=S.round;if(!R)return;
   $("#modePill").textContent=!S.live?"PREVIEW":R.practice?"PRACTICE":"LIVE";
-  $("#modeText").textContent=!S.live?"Sample data":R.practice?"1 wallet = 1 vote until $NECRO launches":"Round "+new Date(R.opensAt).toLocaleTimeString([],{hour:"numeric"});
+  $("#modeText").textContent=!S.live?"Sample data":R.practice?"1 wallet = 1 vote until $AFTER launches":"Round "+new Date(R.opensAt).toLocaleTimeString([],{hour:"numeric"});
   $("#fund").textContent=R.fundEth==null?"Not set up":ethFmt(R.fundEth);
   $("#fundSub").textContent=R.fundEth==null?"The pump wallet goes live at launch.":`Spent in ${S.cfg?.rules?.pumpChunks||5} small buys at the top of the hour.`;
   let list=R.ballot.filter(g=>S.cause==="all"||g.cause===S.cause);
   const key={votes:g=>Number(g.weight),score:g=>g.score,holders:g=>g.holders||0,fall:g=>g.fall}[S.sort];
   list=list.slice().sort((a,b)=>key(b)-key(a));
   const el=$("#list");el.innerHTML="";
-  if(R.warming){el.innerHTML='<p class="empty">The graveyard is still being dug. The scanner is reading every pons coin on the chain, and the first ballot appears once it finds revivable ones.</p>'}
+  if(R.warming){el.innerHTML='<p class="empty">The graveyard is still being dug. The scanner is reading every pump.fun coin that bonded, and the first ballot appears once it finds revivable ones.</p>'}
   list.forEach((g,i)=>{
     const mine=R.myVote?.token===g.token,lead=g.token===R.leader;
     const r=document.createElement("div");r.className="row"+(lead?" lead":"");r.dataset.coin=g.token;r.tabIndex=0;
@@ -704,23 +704,23 @@ function logItem(p){
 }
 
 /* ---------------- voting + wallet ---------------- */
-async function ensureChain(){const eth=window.ethereum;
-  try{await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x1237"}]})}
-  catch(e){if(e.code===4902||/unrecognized|not added|unknown chain/i.test(e.message||"")){await eth.request({method:"wallet_addEthereumChain",params:[{chainId:"0x1237",chainName:"Robinhood Chain",nativeCurrency:{name:"Ether",symbol:"ETH",decimals:18},rpcUrls:["https://rpc.mainnet.chain.robinhood.com"],blockExplorerUrls:["https://robinhoodchain.blockscout.com"]}]})}else throw e}}
+const B58="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function b58(bytes){let n=0n;for(const x of bytes)n=(n<<8n)+BigInt(x);let s="";while(n>0n){s=B58[Number(n%58n)]+s;n/=58n}for(const x of bytes){if(x===0)s="1"+s;else break}return s}
+function solWallet(){return window.phantom?.solana||window.solflare||window.backpack?.solana||window.solana||null}
 async function connect(){
   if(!S.live){toast("Wallet connect works on the live site");return false}
-  if(!window.ethereum){toast("No wallet found. Open this page in MetaMask, Robinhood Wallet or another wallet browser.");return false}
+  const w=solWallet();
+  if(!w){toast("No Solana wallet found. Install Phantom or Solflare, or open this page in their in-app browser.");return false}
   try{
-    const [addr]=await window.ethereum.request({method:"eth_requestAccounts"});
-    await ensureChain().catch(()=>{});
+    const r=await w.connect();const addr=(r?.publicKey||w.publicKey).toString();
     const {message,nonce}=await api("/api/auth/nonce",{method:"POST",body:JSON.stringify({address:addr})});
-    const hex="0x"+[...new TextEncoder().encode(message)].map(b=>b.toString(16).padStart(2,"0")).join("");
-    const signature=await window.ethereum.request({method:"personal_sign",params:[hex,addr]});
-    const j=await api("/api/auth/verify",{method:"POST",body:JSON.stringify({address:addr,nonce,signature})});
+    const signed=await w.signMessage(new TextEncoder().encode(message),"utf8");
+    const sigBytes=signed?.signature||signed;
+    const j=await api("/api/auth/verify",{method:"POST",body:JSON.stringify({address:addr,nonce,signature:b58(sigBytes)})});
     S.auth={token:j.token,address:j.address,exp:Date.now()+j.expiresInMs};
-    try{localStorage.setItem("necro-auth",JSON.stringify(S.auth))}catch(e){}
+    try{localStorage.setItem("afterlife-auth",JSON.stringify(S.auth))}catch(e){}
     renderConnect();toast("Wallet connected");loadRound();return true;
-  }catch(e){toast(e.code===4001||/reject|denied/i.test(e.message||"")?"Connection cancelled":e.message||"Couldn't connect");return false}
+  }catch(e){toast(e.code===4001||/reject|denied|cancel/i.test(e.message||"")?"Connection cancelled":e.message||"Couldn't connect");return false}
 }
 function renderConnect(){const b=$("#connect");b.textContent=S.auth?.address?short(S.auth.address):"Connect wallet";}
 async function castVote(token){
@@ -733,10 +733,10 @@ async function castVote(token){
   }
   if(!S.auth?.token||S.auth.exp<Date.now()){if(!(await connect()))return}
   try{const j=await api("/api/vote",{method:"POST",body:JSON.stringify({token})});
-    const fund=S.round?.fundEth;S.round=j.round;S.round.fundEth=fund;renderRound();
+    const fund=S.round?.fundEth;S.round=j.round;S.round.fundEth=fund;S.round.ballot.forEach(b=>b.poolEth=b.poolSol);renderRound();
     const g=S.round.ballot.find(b=>b.token===token);toast(`Vote cast for $${g?.symbol||"coin"}`);
     if(S.current===token)openCoin(token,true);
-  }catch(e){if(e.status===401){S.auth=null;try{localStorage.removeItem("necro-auth")}catch(_){}renderConnect()}toast(e.message)}
+  }catch(e){if(e.status===401){S.auth=null;try{localStorage.removeItem("afterlife-auth")}catch(_){}renderConnect()}toast(e.message)}
 }
 $("#connect").addEventListener("click",()=>{if(S.auth?.address){toast("Connected as "+short(S.auth.address))}else connect()});
 $("#list").addEventListener("click",e=>{const b=e.target.closest(".vote");if(b){e.stopPropagation();castVote(b.dataset.t);return}const r=e.target.closest(".row");if(r)go("coin-"+r.dataset.coin)});
@@ -749,7 +749,7 @@ $("#toBallot").addEventListener("click",e=>{e.preventDefault();$("#ballot").scro
 /* ---------------- coin record ---------------- */
 async function openCoin(token,quiet){
   let c;
-  if(S.live){try{c=await api("/api/coin/"+token)}catch(e){toast(e.message);if(!quiet)go("graveyard");return}}
+  if(S.live){try{c=await api("/api/coin/"+token);c.poolEth=c.poolSol;if(c.sim)c.sim.fundEth=c.sim.fundSol;if(c.pumpfun)c.explorer=c.pumpfun}catch(e){toast(e.message);if(!quiet)go("graveyard");return}}
   else c=SAMPLE.coin(token);
   S.current=c.token;S.coin=c;
   const bx=$("#bigstone").getContext("2d");bx.clearRect(0,0,20,22);paintStone(bx,true,2);
@@ -765,7 +765,7 @@ async function openCoin(token,quiet){
     <div><span class="label">Peak</span><b>${money(c.peakUsd)}</b><span class="sub">${dateFmt(c.peakAt||c.launchedAt)}</span></div>
     <div><span class="label">Now</span><b>${money(c.nowUsd)}</b><span class="sub down">−${c.fall??Math.round((1-c.nowUsd/c.peakUsd)*100)}% from peak</span></div>
     <div><span class="label">Holders stuck</span><b>${c.holders!=null?Number(c.holders).toLocaleString():"–"}</b><span class="sub">Still holding</span></div>
-    <div><span class="label">ETH in pool</span><b>${c.poolEth!=null?c.poolEth.toFixed(3):"–"}</b><span class="sub">What a sell can draw from</span></div>`;
+    <div><span class="label">SOL in pool</span><b>${c.poolEth!=null?c.poolEth.toFixed(2):"–"}</b><span class="sub">What a sell can draw from</span></div>`;
   $("#cFacts").innerHTML=[["Launched",dateFmt(c.launchedAt)],["Peak",money(c.peakUsd)],["Time of death",dateFmt(c.diedAt)],["Cause",c.cause==="dev"?"Dev sold the launch bag":"Volume faded out"],
     ["Dev now holds",c.devPct!=null?c.devPct.toFixed(2)+"%":"–"],["Status",c.why],["Votes this hour",c.votes?String(c.votes.voters):"0"]]
     .map(([a,b])=>`<div><dt>${a}</dt><dd>${esc(b)}</dd></div>`).join("");
@@ -829,12 +829,12 @@ function renderLog(){
   $("#lPumps").textContent=Lg.stats.pumps.toLocaleString();$("#lEth").textContent=Lg.stats.ethSpent.toFixed(Lg.stats.ethSpent<10?3:1);
   $("#lAvg").textContent=Lg.stats.avgMove==null?"–":(Lg.stats.avgMove>=0?"+":"")+Lg.stats.avgMove+"%";$("#lCoins").textContent=Lg.stats.coins;
   const W=720,H2=220,L=44,R=10,T=14,B=30,data=Lg.bars,bw=(W-L-R)/data.length;
-  const top=Math.max(0.05,...data.map(d=>d.eth)),nice=[0.05,0.1,0.2,0.3,0.5,1,2,5].find(v=>v>=top)||top,y=v=>T+(1-v/nice)*(H2-T-B);let s="";
+  const top=Math.max(0.05,...data.map(d=>d.eth)),nice=[0.05,0.1,0.2,0.5,1,2,3,5,10,20].find(v=>v>=top)||top,y=v=>T+(1-v/nice)*(H2-T-B);let s="";
   [0,nice/2,nice].forEach(v=>{s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1c1e28"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${v.toFixed(v<0.1?2:1)}</text>`});
   data.forEach((p,i)=>{const last=i===data.length-1;
     if(p.eth>0)s+=`<rect x="${(L+i*bw+bw*0.18).toFixed(1)}" y="${y(p.eth).toFixed(1)}" width="${(bw*0.64).toFixed(1)}" height="${(H2-B-y(p.eth)).toFixed(1)}" rx="2" fill="${last?"#eab464":"#3a3550"}"><title>${timeFmt(p.at)} · ${p.symbol?"$"+esc(p.symbol)+" · ":""}${ethFmt(p.eth)}</title></rect>`;
     if(i%4===0||last)s+=`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H2-10}" text-anchor="middle">${new Date(p.at).toLocaleTimeString([],{hour:"numeric"})}</text>`;});
-  s+=`<text x="${L-8}" y="${T-2}" text-anchor="end">ETH</text>`;
+  s+=`<text x="${L-8}" y="${T-2}" text-anchor="end">SOL</text>`;
   if(!data.some(d=>d.eth>0))s+=`<text x="${W/2}" y="${H2/2}" text-anchor="middle">No pumps in the last 24 hours</text>`;
   $("#lBars").innerHTML=s;
   $("#lBody").innerHTML=Lg.rows.length?Lg.rows.map(p=>`<tr><td class="mono" style="color:var(--mute)">${timeFmt(p.at)}</td>
@@ -844,7 +844,7 @@ function renderLog(){
     :'<tr><td colspan="6" class="empty">No pumps yet.</td></tr>';
   renderHomeLog();
 }
-async function loadLog(){if(!S.live){S.log=SAMPLE.log;renderLog();return}try{S.log=await api("/api/log");renderLog()}catch(e){}}
+async function loadLog(){if(!S.live){S.log=SAMPLE.log;renderLog();return}try{const L=await api("/api/log");L.stats.ethSpent=L.stats.solSpent;L.rows.forEach(r=>r.eth=r.sol);L.bars.forEach(b=>b.eth=b.sol);S.log=L;renderLog()}catch(e){}}
 
 /* ---------------- router ---------------- */
 const PAGES=["home","coin","graveyard","log","how"];
@@ -878,14 +878,14 @@ function tick(){
 /* ---------------- loading ---------------- */
 async function loadRound(){
   if(!S.live){S.round=SAMPLE.round;renderRound();return}
-  try{S.round=await api("/api/round");renderRound()}catch(e){console.warn(e)}
+  try{S.round=await api("/api/round");S.round.fundEth=S.round.fundSol;S.round.ballot.forEach(b=>b.poolEth=b.poolSol);renderRound()}catch(e){console.warn(e)}
 }
 async function boot(){
-  try{const c=await fetch("/api/config",{cache:"no-store"});if(c.ok){const j=await c.json();if(j.chainId===4663){S.live=true;S.cfg=j}}}catch(e){}
+  try{const c=await fetch("/api/config",{cache:"no-store"});if(c.ok){const j=await c.json();if(j.chain==="solana"){S.live=true;S.cfg=j}}}catch(e){}
   if(S.auth&&(!S.auth.exp||S.auth.exp<Date.now()))S.auth=null;
   renderConnect();
   if(S.live){
-    $("#footNote").textContent="Necro is unaudited. A pump is a buy, not a guarantee. Not investment advice.";
+    $("#footNote").textContent="Afterlife is unaudited. A pump is a buy, not a guarantee. Not investment advice.";
     $("#afterBuyText").textContent=S.cfg.afterBuy==="burn"?"Burned forever, sent to the dead address":"Held in the public pump wallet";
     $("#afterBuyTbd").hidden=true;
     if(S.cfg.pumpWallet){$("#pumpAddr").textContent=S.cfg.pumpWallet}

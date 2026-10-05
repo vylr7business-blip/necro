@@ -13,7 +13,7 @@ export async function alert(key: string, text: string) {
     await fetch(CONFIG.alertWebhook, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ content: `🪦 Necro: ${text}`, text: `🪦 Necro: ${text}` }),
+      body: JSON.stringify({ content: `🪦 Afterlife: ${text}`, text: `🪦 Afterlife: ${text}` }),
     });
   } catch (e) {
     console.warn("[ALERT] webhook failed", e);

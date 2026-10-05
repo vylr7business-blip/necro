@@ -2,181 +2,77 @@ import { DatabaseSync } from "node:sqlite";
 
 export type DB = DatabaseSync;
 
+const SCHEMA = "afterlife-1";
+
 export function openDb(path: string): DB {
   const db = new DatabaseSync(path);
+  db.exec(`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+  const ver = (db.prepare("SELECT value FROM kv WHERE key = 'schema'").get() as { value: string } | undefined)?.value;
+  if (ver !== SCHEMA) {
+    // Fresh start for the Solana version: drop every table from the old Robinhood build.
+    const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT IN ('kv', 'sqlite_sequence')").all() as Array<{ name: string }>).map((t) => t.name);
+    for (const t of tables) db.exec(`DROP TABLE IF EXISTS "${t}"`);
+    db.exec("DELETE FROM kv");
+  }
   db.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA busy_timeout = 5000;
-
-    -- Every pons coin, from the factories' TokenLaunched events
+    -- Bonded pump.fun coins (mint addresses are case-sensitive base58)
     CREATE TABLE IF NOT EXISTS coins (
-      token        TEXT PRIMARY KEY,          -- lowercase address
-      pool         TEXT NOT NULL,             -- lowercase Uniswap v3 pool address
-      deployer     TEXT NOT NULL,             -- the coin's creator (the "dev")
-      initial_buy  TEXT NOT NULL DEFAULT '0', -- tokens the dev bought at launch
-      is_token0    INTEGER NOT NULL,          -- 1 when the coin is token0 in the pool
-      symbol       TEXT,
-      name         TEXT,
-      supply       TEXT NOT NULL DEFAULT '1000000000000000000000000000',
-      launch_block INTEGER NOT NULL,
-      launch_at    INTEGER NOT NULL
+      mint        TEXT PRIMARY KEY,
+      symbol      TEXT, name TEXT, image TEXT,
+      creator     TEXT NOT NULL,
+      pool        TEXT,                    -- PumpSwap pool
+      token_program TEXT,
+      decimals    INTEGER NOT NULL DEFAULT 6,
+      created_at  INTEGER NOT NULL,
+      ath_usd     REAL, ath_at INTEGER,
+      mcap_usd    REAL,                    -- from pump.fun
+      last_trade_at INTEGER,
+      seen_at     INTEGER NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS coins_pool ON coins(pool);
-
-    -- Hourly candles built from the pool's Swap events. Prices are in ETH per whole token.
-    CREATE TABLE IF NOT EXISTS hourly (
-      token  TEXT NOT NULL,
-      hour   INTEGER NOT NULL,               -- unix ms at the start of the hour
-      open   REAL NOT NULL, high REAL NOT NULL, low REAL NOT NULL, close REAL NOT NULL,
-      vol_eth REAL NOT NULL DEFAULT 0,
-      swaps  INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (token, hour)
+    -- Live market data from DexScreener
+    CREATE TABLE IF NOT EXISTS market (
+      mint TEXT PRIMARY KEY, price_usd REAL, mcap_usd REAL, liq_usd REAL, vol24_usd REAL, fetched_at INTEGER NOT NULL
     );
-
-    -- Latest known price per coin (price only moves when someone swaps)
-    CREATE TABLE IF NOT EXISTS prices (
-      token        TEXT PRIMARY KEY,
-      price        REAL NOT NULL,
-      last_swap_at INTEGER NOT NULL
-    );
-
-    -- The graveyard: coins that died, and whether they can be revived
+    -- The graveyard
     CREATE TABLE IF NOT EXISTS graves (
-      token       TEXT PRIMARY KEY,
-      status      TEXT NOT NULL,            -- ok | wait | fresh | no
-      why         TEXT NOT NULL,
-      cause       TEXT NOT NULL,            -- dev | fade
-      score       INTEGER NOT NULL DEFAULT 0,
-      parts       TEXT NOT NULL DEFAULT '{}',
-      peak_usd    REAL NOT NULL,
-      now_usd     REAL NOT NULL,
-      peak_at     INTEGER,
-      died_at     INTEGER,
-      pool_eth    REAL,
-      dev_pct     REAL,
-      holders     INTEGER,
-      sell_ok     INTEGER,
-      checked_at  INTEGER NOT NULL
+      mint TEXT PRIMARY KEY, status TEXT NOT NULL, why TEXT NOT NULL, cause TEXT NOT NULL,
+      score INTEGER NOT NULL DEFAULT 0, parts TEXT NOT NULL DEFAULT '{}',
+      peak_usd REAL NOT NULL, now_usd REAL NOT NULL, peak_at INTEGER, died_at INTEGER,
+      pool_sol REAL, dev_pct REAL, vol24_usd REAL, checked_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS graves_status ON graves(status, score);
 
-    -- $NECRO balances, for vote weight
-    CREATE TABLE IF NOT EXISTS necro_balances (address TEXT PRIMARY KEY, balance TEXT NOT NULL);
-
-    -- One round per hour
     CREATE TABLE IF NOT EXISTS rounds (
-      id            INTEGER PRIMARY KEY,      -- hour number since 1970
-      ballot        TEXT NOT NULL,            -- JSON list of token addresses
-      practice      INTEGER NOT NULL,         -- 1 = before $NECRO launch, one wallet one vote
-      locked        INTEGER NOT NULL DEFAULT 0,
-      winner        TEXT,
-      winner_reason TEXT,
-      pump_status   TEXT,                     -- NULL | pending | done | partial | skipped
-      pump_note     TEXT,
-      pre_price     REAL,
-      eth_spent     TEXT,
-      tokens_out    TEXT,
-      created_at    INTEGER NOT NULL
+      id INTEGER PRIMARY KEY, ballot TEXT NOT NULL, practice INTEGER NOT NULL, locked INTEGER NOT NULL DEFAULT 0,
+      winner TEXT, winner_reason TEXT, pump_status TEXT, pump_note TEXT,
+      pre_usd REAL, sol_spent TEXT, tokens_out TEXT, burn_sig TEXT, created_at INTEGER NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS round_balances (round_id INTEGER NOT NULL, address TEXT NOT NULL, balance TEXT NOT NULL, PRIMARY KEY (round_id, address));
     CREATE TABLE IF NOT EXISTS votes (
-      round_id INTEGER NOT NULL,
-      address  TEXT NOT NULL,
-      token    TEXT NOT NULL,
-      weight   TEXT NOT NULL,
-      at       INTEGER NOT NULL,
+      round_id INTEGER NOT NULL, address TEXT NOT NULL, mint TEXT NOT NULL, weight TEXT NOT NULL, at INTEGER NOT NULL,
       PRIMARY KEY (round_id, address)
     );
-
-    -- Each pump is split into a few buys. A buy's tx hash is saved before waiting, so nothing is ever bought twice.
+    -- Each pump is split into a few buys. A buy's signature is saved before waiting, so nothing is bought twice.
     CREATE TABLE IF NOT EXISTS pump_legs (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      round_id   INTEGER NOT NULL,
-      idx        INTEGER NOT NULL,
-      token      TEXT NOT NULL,
-      amount_in  TEXT NOT NULL,               -- wei of WETH
-      due_at     INTEGER NOT NULL,
-      status     TEXT NOT NULL DEFAULT 'pending', -- pending | submitted | done | failed
-      tx_hash    TEXT,
-      amount_out TEXT,
-      attempts   INTEGER NOT NULL DEFAULT 0,
-      last_error TEXT,
-      done_at    INTEGER,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, round_id INTEGER NOT NULL, idx INTEGER NOT NULL, mint TEXT NOT NULL,
+      lamports TEXT NOT NULL, due_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+      sig TEXT, amount_out TEXT, attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, done_at INTEGER,
       UNIQUE (round_id, idx)
     );
-
-    -- Current market data per coin, from GeckoTerminal
-    CREATE TABLE IF NOT EXISTS market (
-      token       TEXT PRIMARY KEY,
-      price_eth   REAL,
-      mcap_usd    REAL,
-      vol24_eth   REAL NOT NULL DEFAULT 0,
-      reserve_usd REAL,
-      fetched_at  INTEGER NOT NULL,
-      hist_at     INTEGER                    -- when its daily history was last read
-    );
-
-    CREATE TABLE IF NOT EXISTS cursors (name TEXT PRIMARY KEY, block TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS nonces (nonce TEXT PRIMARY KEY, address TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, address TEXT NOT NULL, expires INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
-  // v2: pool sweep. Only coins whose pool still holds ETH get their trade history read ("watched").
-  const cols = (db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).map((c) => c.name);
-  if (!cols.includes("watched")) {
-    db.exec(`
-      ALTER TABLE coins ADD COLUMN pool_eth REAL;
-      ALTER TABLE coins ADD COLUMN pool_checked_at INTEGER;
-      ALTER TABLE coins ADD COLUMN watched INTEGER NOT NULL DEFAULT 0;
-      ALTER TABLE coins ADD COLUMN backfill_to INTEGER;
-      CREATE INDEX IF NOT EXISTS coins_watched ON coins(watched);
-      CREATE INDEX IF NOT EXISTS coins_checked ON coins(pool_checked_at);
-      DELETE FROM hourly; DELETE FROM prices; DELETE FROM cursors WHERE name = 'swaps';
-    `);
-  }
-  // v4: prices and history come from GeckoTerminal; old swap-based data is cleared once.
-  const ver = (db.prepare("SELECT value FROM kv WHERE key = 'schema'").get() as { value: string } | undefined)?.value;
-  if (!(db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).some((c) => c.name === "pons")) {
-    db.exec("ALTER TABLE coins ADD COLUMN pons INTEGER NOT NULL DEFAULT 0; ALTER TABLE coins ADD COLUMN dev_frac REAL;");
-  }
-  if (!(db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).some((c) => c.name === "venue")) {
-    db.exec("ALTER TABLE coins ADD COLUMN venue TEXT NOT NULL DEFAULT 'v3'; ALTER TABLE coins ADD COLUMN gt_pool TEXT;");
-  }
-  if (ver !== "5") {
-    db.exec(`
-      DELETE FROM hourly; DELETE FROM prices; DELETE FROM graves; DELETE FROM cursors WHERE name = 'swaps';
-      UPDATE coins SET backfill_to = NULL;
-      UPDATE coins SET watched = 0;
-      DELETE FROM market;
-      INSERT INTO kv (key, value) VALUES ('schema', '5') ON CONFLICT(key) DO UPDATE SET value = '5';
-    `);
-  }
+  db.prepare("INSERT INTO kv (key, value) VALUES ('schema', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(SCHEMA);
   return db;
 }
 
 /** Run `fn` inside one write transaction. Anything thrown rolls everything back. */
 export function tx<T>(db: DB, fn: () => T): T {
   db.exec("BEGIN IMMEDIATE");
-  try {
-    const out = fn();
-    db.exec("COMMIT");
-    return out;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
-}
-
-export function getCursor(db: DB, name: string): bigint | null {
-  const r = db.prepare("SELECT block FROM cursors WHERE name = ?").get(name) as { block: string } | undefined;
-  return r ? BigInt(r.block) : null;
-}
-export function setCursor(db: DB, name: string, block: bigint) {
-  db.prepare("INSERT INTO cursors (name, block) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET block = excluded.block").run(name, block.toString());
+  try { const out = fn(); db.exec("COMMIT"); return out; }
+  catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 export function kvGet(db: DB, key: string): string | null {
-  const r = db.prepare("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | undefined;
-  return r?.value ?? null;
+  return (db.prepare("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | undefined)?.value ?? null;
 }
 export function kvSet(db: DB, key: string, value: string) {
   db.prepare("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
