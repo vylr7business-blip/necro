@@ -25,7 +25,17 @@ export const CONFIG = {
   necroStartBlock: BigInt(env("NECRO_START_BLOCK", "0")!),
 
   // Secret key of the small PUMP wallet (never the dev wallet). The bot buys from this wallet.
-  pumpKey: env("PUMP_PRIVATE_KEY") as Hex | undefined,
+  // MetaMask exports the key without "0x", so add it if it's missing.
+  pumpKey: (() => {
+    const k = (env("PUMP_PRIVATE_KEY") ?? "").trim().replace(/^["']|["']$/g, "");
+    if (!k) return undefined;
+    const hex = k.startsWith("0x") ? k : `0x${k}`;
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hex)) {
+      console.error("[config] PUMP_PRIVATE_KEY doesn't look like a private key (64 hex characters). The pump bot stays off.");
+      return undefined;
+    }
+    return hex as Hex;
+  })(),
   // The bot only sends real transactions when this is on. Everything else (scanner, votes) runs without it.
   pumpsEnabled: flag("PUMPS_ENABLED"),
   // What happens to the coins the bot buys: "burn" (sent to the dead address) or "hold" (stay in the pump wallet).
