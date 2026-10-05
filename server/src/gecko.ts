@@ -31,10 +31,21 @@ async function get<T>(path: string): Promise<T | null> {
 
 type MultiPool = { attributes: { address: string; base_token_price_native_currency: string | null; fdv_usd: string | null; market_cap_usd: string | null; reserve_in_usd: string | null; volume_usd: { h24: string | null } } };
 
+/** v2 coins trade in Uniswap v4 pools; find each one's pool id on GeckoTerminal by token address (a few per pass). */
+async function resolveV4(db: DB, perPass = 6) {
+  const due = db.prepare("SELECT token FROM coins WHERE venue = 'v4' AND gt_pool IS NULL LIMIT ?").all(perPass) as Array<{ token: string }>;
+  for (const c of due) {
+    const j = await get<{ data: Array<{ attributes: { address: string } }> }>(`/tokens/${c.token}/pools?page=1`);
+    if (!j) continue;
+    const id = j.data?.[0]?.attributes?.address?.toLowerCase();
+    db.prepare("UPDATE coins SET gt_pool = ? WHERE token = ?").run(id ?? "none", c.token);
+  }
+}
+
 /** Refresh current price / volume for up to 10 x 30 pools per pass, oldest first. */
 export async function refreshMarket(db: DB, ethUsd: number) {
-  const due = db.prepare(`SELECT c.token, c.pool FROM coins c LEFT JOIN market m ON m.token = c.token
-                          WHERE c.watched = 1 AND (m.fetched_at IS NULL OR m.fetched_at < ?) ORDER BY m.fetched_at IS NOT NULL, m.fetched_at LIMIT 300`)
+  const due = db.prepare(`SELECT c.token, COALESCE(c.gt_pool, c.pool) AS pool FROM coins c LEFT JOIN market m ON m.token = c.token
+                          WHERE c.watched = 1 AND (c.venue = 'v3' OR (c.gt_pool IS NOT NULL AND c.gt_pool != 'none')) AND (m.fetched_at IS NULL OR m.fetched_at < ?) ORDER BY m.fetched_at IS NOT NULL, m.fetched_at LIMIT 300`)
     .all(Date.now() - MARKET_EVERY_MS) as Array<{ token: string; pool: string }>;
   for (let i = 0; i < due.length; i += 30) {
     const batch = due.slice(i, i + 30);
@@ -62,8 +73,8 @@ export async function refreshMarket(db: DB, ethUsd: number) {
 
 /** Daily history for coins that look dead: quiet in the last 24h. Most ETH left in the pool goes first. */
 export async function refreshHistory(db: DB, ethUsd: number, perPass = 12) {
-  const due = db.prepare(`SELECT c.token, c.pool FROM coins c JOIN market m ON m.token = c.token
-                          WHERE c.watched = 1 AND m.price_eth IS NOT NULL AND m.vol24_eth < ? AND (m.hist_at IS NULL OR m.hist_at < ?)
+  const due = db.prepare(`SELECT c.token, COALESCE(c.gt_pool, c.pool) AS pool FROM coins c JOIN market m ON m.token = c.token
+                          WHERE c.watched = 1 AND m.price_eth IS NOT NULL AND (c.venue = 'v3' OR (c.gt_pool IS NOT NULL AND c.gt_pool != 'none')) AND m.vol24_eth < ? AND (m.hist_at IS NULL OR m.hist_at < ?)
                           ORDER BY m.hist_at IS NOT NULL, c.pool_eth DESC LIMIT ?`)
     .all(CONFIG.quietVol24hEth, Date.now() - HISTORY_EVERY_MS, perPass) as Array<{ token: string; pool: string }>;
   for (const c of due) {
@@ -93,6 +104,7 @@ export function startGecko(db: DB, ethUsd: () => Promise<number>, everyMs = 10_0
     running = true;
     try {
       const usd = await ethUsd().catch(() => 2700);
+      await resolveV4(db);
       await refreshMarket(db, usd);
       await refreshHistory(db, usd);
     } catch (e) { console.error("[gecko]", (e as Error).message); }

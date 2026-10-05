@@ -31,7 +31,7 @@ async function holderCount(token: string): Promise<number | null> {
   return n;
 }
 
-type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null; vol24_eth: number | null; dev_frac: number | null };
+type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null; vol24_eth: number | null; dev_frac: number | null; venue: string; reserve_usd: number | null };
 
 /** Names are only read for coins that end up in the graveyard (a few reads instead of one per coin ever launched). */
 async function fillNames(db: DB, tokens: string[]) {
@@ -48,7 +48,7 @@ async function fillNames(db: DB, tokens: string[]) {
 
 export async function evaluateOnce(db: DB, now = Date.now()) {
   const usd = await ethUsd();
-  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, c.dev_frac, p.price, p.last_swap_at, m.vol24_eth
+  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, c.dev_frac, c.venue, m.reserve_usd, p.price, p.last_swap_at, m.vol24_eth
                             FROM coins c JOIN prices p ON p.token = c.token LEFT JOIN market m ON m.token = c.token WHERE c.pons = 1`).all() as CoinRow[];
   const candlesOf = db.prepare("SELECT hour, close, vol_eth FROM hourly WHERE token = ? ORDER BY hour");
   const lastPump = db.prepare("SELECT MAX(id) AS id FROM rounds WHERE winner = ? AND pump_status IN ('done','partial')");
@@ -84,10 +84,10 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
     if (!prev || now - prev.checked_at > RECHECK_MS) {
       checkedAt = now;
       const [wethInPool, devBal] = await Promise.all([
-        publicClient.readContract({ address: ADDR.weth, abi: ABI.weth, functionName: "balanceOf", args: [c.pool as Address] }).catch(() => null),
+        c.venue === "v4" ? Promise.resolve(null) : publicClient.readContract({ address: ADDR.weth, abi: ABI.weth, functionName: "balanceOf", args: [c.pool as Address] }).catch(() => null),
         publicClient.readContract({ address: c.token as Address, abi: ABI.erc20, functionName: "balanceOf", args: [c.deployer as Address] }).catch(() => null),
       ]);
-      poolEth = wethInPool === null ? null : Number(wethInPool) / 1e18;
+      poolEth = c.venue === "v4" ? (c.reserve_usd ? c.reserve_usd / usd / 2 : null) : wethInPool === null ? null : Number(wethInPool) / 1e18;
       devPct = c.dev_frac !== null ? c.dev_frac * 100 : devBal === null ? null : Number((devBal * 1_000_000n) / BigInt(c.supply)) / 10_000;
       cause = causeOfDeath(BigInt(c.initial_buy), devBal);
       // The sell test and holder count only matter for coins that passed the first two checks.

@@ -19,7 +19,8 @@ export function getRound(db: DB, id: number) {
 }
 
 export function ballotCandidates(db: DB, n = CONFIG.ballotSize) {
-  return db.prepare("SELECT token, score FROM graves WHERE status = 'ok' ORDER BY score DESC, peak_usd DESC LIMIT ?").all(n) as Array<{ token: string; score: number }>;
+  // Only coins the pump bot can buy today (pons v1, Uniswap v3). pons v2 (Uniswap v4) joins once v4 buying is built.
+  return db.prepare("SELECT g.token, g.score FROM graves g JOIN coins c ON c.token = g.token WHERE g.status = 'ok' AND COALESCE(c.venue, 'v3') = 'v3' ORDER BY g.score DESC, g.peak_usd DESC LIMIT ?").all(n) as Array<{ token: string; score: number }>;
 }
 
 /** Make sure this hour's round exists. Snapshots $NECRO balances the moment it opens. */

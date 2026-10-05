@@ -139,6 +139,9 @@ export function openDb(path: string): DB {
   if (!(db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).some((c) => c.name === "pons")) {
     db.exec("ALTER TABLE coins ADD COLUMN pons INTEGER NOT NULL DEFAULT 0; ALTER TABLE coins ADD COLUMN dev_frac REAL;");
   }
+  if (!(db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).some((c) => c.name === "venue")) {
+    db.exec("ALTER TABLE coins ADD COLUMN venue TEXT NOT NULL DEFAULT 'v3'; ALTER TABLE coins ADD COLUMN gt_pool TEXT;");
+  }
   if (ver !== "5") {
     db.exec(`
       DELETE FROM hourly; DELETE FROM prices; DELETE FROM graves; DELETE FROM cursors WHERE name = 'swaps';
