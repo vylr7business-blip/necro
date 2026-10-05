@@ -105,6 +105,17 @@ export function openDb(path: string): DB {
       UNIQUE (round_id, idx)
     );
 
+    -- Current market data per coin, from GeckoTerminal
+    CREATE TABLE IF NOT EXISTS market (
+      token       TEXT PRIMARY KEY,
+      price_eth   REAL,
+      mcap_usd    REAL,
+      vol24_eth   REAL NOT NULL DEFAULT 0,
+      reserve_usd REAL,
+      fetched_at  INTEGER NOT NULL,
+      hist_at     INTEGER                    -- when its daily history was last read
+    );
+
     CREATE TABLE IF NOT EXISTS cursors (name TEXT PRIMARY KEY, block TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS nonces (nonce TEXT PRIMARY KEY, address TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, address TEXT NOT NULL, expires INTEGER NOT NULL);
@@ -121,6 +132,15 @@ export function openDb(path: string): DB {
       CREATE INDEX IF NOT EXISTS coins_watched ON coins(watched);
       CREATE INDEX IF NOT EXISTS coins_checked ON coins(pool_checked_at);
       DELETE FROM hourly; DELETE FROM prices; DELETE FROM cursors WHERE name = 'swaps';
+    `);
+  }
+  // v4: prices and history come from GeckoTerminal; old swap-based data is cleared once.
+  const ver = (db.prepare("SELECT value FROM kv WHERE key = 'schema'").get() as { value: string } | undefined)?.value;
+  if (ver !== "4") {
+    db.exec(`
+      DELETE FROM hourly; DELETE FROM prices; DELETE FROM graves; DELETE FROM cursors WHERE name = 'swaps';
+      UPDATE coins SET backfill_to = NULL;
+      INSERT INTO kv (key, value) VALUES ('schema', '4') ON CONFLICT(key) DO UPDATE SET value = '4';
     `);
   }
   return db;

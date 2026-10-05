@@ -31,7 +31,7 @@ async function holderCount(token: string): Promise<number | null> {
   return n;
 }
 
-type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null };
+type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null; vol24_eth: number | null };
 
 /** Names are only read for coins that end up in the graveyard (a few reads instead of one per coin ever launched). */
 async function fillNames(db: DB, tokens: string[]) {
@@ -48,8 +48,8 @@ async function fillNames(db: DB, tokens: string[]) {
 
 export async function evaluateOnce(db: DB, now = Date.now()) {
   const usd = await ethUsd();
-  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, p.price, p.last_swap_at
-                            FROM coins c JOIN prices p ON p.token = c.token`).all() as CoinRow[];
+  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, p.price, p.last_swap_at, m.vol24_eth
+                            FROM coins c JOIN prices p ON p.token = c.token LEFT JOIN market m ON m.token = c.token`).all() as CoinRow[];
   const candlesOf = db.prepare("SELECT hour, close, vol_eth FROM hourly WHERE token = ? ORDER BY hour");
   const lastPump = db.prepare("SELECT MAX(id) AS id FROM rounds WHERE winner = ? AND pump_status IN ('done','partial')");
   const prevGrave = db.prepare("SELECT checked_at, pool_eth, dev_pct, sell_ok, holders, cause FROM graves WHERE token = ?");
@@ -67,7 +67,8 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
     const supply = Number(BigInt(c.supply) / 10n ** 12n) / 1e6; // whole tokens
     const life = lifeOf(candles, c.price, CONFIG.minDropPct);
     const peakUsd = life.peak * supply * usd, nowUsd = life.now * supply * usd;
-    const vol24 = candles.filter((x) => x.hour >= now - DAY).reduce((a, x) => a + x.vol_eth, 0);
+    if (!candles.length) continue; // history not read yet
+    const vol24 = c.vol24_eth ?? candles.filter((x) => x.hour >= now - DAY).reduce((a, x) => a + x.vol_eth, 0);
     if (!isBuried({ peakUsd, nowUsd, vol24hEth: vol24 }, RULES)) { alive.push(c.token); continue; }
     if (c.symbol === null) unnamed.push(c.token);
     const vol7d = candles.filter((x) => x.hour >= now - 7 * DAY).reduce((a, x) => a + x.vol_eth, 0);

@@ -186,8 +186,16 @@ async function syncSwaps(db: DB, head: bigint) {
   const unchecked = (db.prepare("SELECT COUNT(*) AS n FROM coins WHERE pool_checked_at IS NULL").get() as { n: number }).n;
   if (unchecked > 0 && getCursor(db, "swaps") === null) return; // first full sweep still running
   const top = head < launched ? head : launched;
+  if (getCursor(db, "swaps") === null) {
+    // First run: new trades are followed from here on, and every watched pool reads its own history up to here.
+    tx(db, () => {
+      db.prepare("UPDATE coins SET backfill_to = ? WHERE watched = 1 AND launch_block <= ?").run(Number(top), Number(top));
+      setCursor(db, "swaps", top);
+    });
+    return;
+  }
   const watched = db.prepare("SELECT pool, token, is_token0 FROM coins WHERE watched = 1").all() as PoolInfo[];
-  if (!watched.length) { if (unchecked === 0) setCursor(db, "swaps", top); return; }
+  if (!watched.length) { setCursor(db, "swaps", top); return; }
   const byPool = new Map(watched.map((p) => [p.pool, p]));
   const pools = watched.map((p) => p.pool);
   const first = (db.prepare("SELECT MIN(launch_block) AS b FROM coins WHERE watched = 1").get() as { b: number }).b;
@@ -196,26 +204,35 @@ async function syncSwaps(db: DB, head: bigint) {
   }, 6);
 }
 
-/** Pools that started being watched after the swap reader passed their launch get their older trades here. */
-async function backfill(db: DB) {
-  const due = db.prepare("SELECT token, pool, is_token0, launch_block, backfill_to FROM coins WHERE watched = 1 AND backfill_to IS NOT NULL LIMIT 40")
-    .all() as Array<PoolInfo & { launch_block: number; backfill_to: number }>;
-  for (const c of due) {
-    const byPool = new Map([[c.pool, c]]);
-    let from = BigInt(c.launch_block);
-    const end = BigInt(c.backfill_to);
-    let step = 2_000_000n;
-    const rows: SwapRow[] = [];
-    while (from <= end) {
-      const to = from + step - 1n > end ? end : from + step - 1n;
-      try { rows.push(...(await swapLogs([c.pool], from, to))); from = to + 1n; }
-      catch (e) { if (step > 5_000n) { step /= 4n; continue; } throw e; }
-    }
-    tx(db, () => {
-      applySwaps(db, rows, byPool, true);
-      db.prepare("UPDATE coins SET backfill_to = NULL WHERE token = ?").run(c.token);
-    });
+/** Each watched pool reads its own trade history (one address per request: up to 10M blocks, under 10,000 results). */
+const BACKFILL_PER_PASS = 300, BACKFILL_PARALLEL = 20;
+async function backfillOne(db: DB, c: PoolInfo & { launch_block: number; backfill_to: number }) {
+  const byPool = new Map([[c.pool, c]]);
+  let from = BigInt(c.launch_block);
+  const end = BigInt(c.backfill_to);
+  let step = 10_000_000n;
+  const rows: SwapRow[] = [];
+  while (from <= end) {
+    const to = from + step - 1n > end ? end : from + step - 1n;
+    try { rows.push(...(await swapLogs([c.pool], from, to))); from = to + 1n; if (step < 10_000_000n) step *= 2n; }
+    catch (e) { if (step > 2_000n) { step /= 5n; continue; } throw e; }
   }
+  tx(db, () => {
+    if (rows.length) applySwaps(db, rows, byPool, true);
+    db.prepare("UPDATE coins SET backfill_to = NULL WHERE token = ?").run(c.token);
+  });
+}
+async function backfill(db: DB) {
+  const due = db.prepare("SELECT token, pool, is_token0, launch_block, backfill_to FROM coins WHERE watched = 1 AND backfill_to IS NOT NULL LIMIT ?")
+    .all(BACKFILL_PER_PASS) as Array<PoolInfo & { launch_block: number; backfill_to: number }>;
+  if (!due.length) return;
+  let failed = 0;
+  for (let i = 0; i < due.length; i += BACKFILL_PARALLEL) {
+    const res = await Promise.allSettled(due.slice(i, i + BACKFILL_PARALLEL).map((c) => backfillOne(db, c)));
+    failed += res.filter((r) => r.status === "rejected").length;
+  }
+  const left = (db.prepare("SELECT COUNT(*) AS n FROM coins WHERE backfill_to IS NOT NULL").get() as { n: number }).n;
+  console.log(`[scanner] history: ${due.length - failed} pools read, ${failed} to retry, ${left} left`);
 }
 
 async function syncNecro(db: DB, head: bigint) {
@@ -252,8 +269,7 @@ export async function scanOnce(db: DB) {
   const head = (await publicClient.getBlockNumber()) - CONFIRMATIONS;
   await syncLaunches(db, head);
   await sweepPools(db);
-  await syncSwaps(db, head);
-  await backfill(db);
+  // Trade history now comes from GeckoTerminal (gecko.ts). Reading every swap from the public RPC was too slow at this chain's volume.
   await syncNecro(db, head);
   return head;
 }

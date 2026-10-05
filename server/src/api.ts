@@ -142,7 +142,9 @@ export function createApi(db: DB) {
       (SELECT COUNT(*) FROM coins WHERE pool_checked_at IS NOT NULL) AS poolsChecked,
       (SELECT COUNT(*) FROM coins WHERE watched = 1) AS poolsWithEth,
       (SELECT COUNT(*) FROM coins WHERE backfill_to IS NOT NULL) AS backfillQueue,
-      (SELECT COUNT(*) FROM prices) AS coinsWithTrades,
+      (SELECT COUNT(*) FROM market) AS marketChecked,
+      (SELECT COUNT(*) FROM market WHERE price_eth IS NOT NULL AND vol24_eth < ${CONFIG.quietVol24hEth}) AS quietCoins,
+      (SELECT COUNT(*) FROM market WHERE hist_at IS NOT NULL) AS historiesRead,
       (SELECT COUNT(*) FROM graves) AS graves, (SELECT COUNT(*) FROM graves WHERE status='ok') AS revivable`).get();
     res.json({
       rpc: head !== null ? { ok: true, block: head.toString() } : { ok: false, note: "RPC unreachable" },
