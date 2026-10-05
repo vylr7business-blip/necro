@@ -25,13 +25,13 @@ if (toEventSelector(EVENTS.swap) !== V3_SWAP_TOPIC) void alert("swap-topic", "Un
  * Walk [from, head] in block ranges. Several ranges are fetched at once (PARALLEL), then saved strictly in order,
  * so the saved cursor never skips anything. Ranges shrink when the RPC complains and grow when it doesn't.
  */
-async function walk<T>(name: string, start: bigint, head: bigint, fetch: (from: bigint, to: bigint) => Promise<T>, commit: (data: T, from: bigint, to: bigint) => void) {
+async function walk<T>(name: string, start: bigint, head: bigint, fetch: (from: bigint, to: bigint) => Promise<T>, commit: (data: T, from: bigint, to: bigint) => void, parallel = PARALLEL) {
   let from = (getCursor(db_(), name) ?? start - 1n) + 1n;
   chunks[name] ??= 20_000n;
   while (from <= head) {
     const ranges: Array<[bigint, bigint]> = [];
     let f = from;
-    for (let i = 0; i < PARALLEL && f <= head; i++) {
+    for (let i = 0; i < parallel && f <= head; i++) {
       const to = f + chunks[name] - 1n > head ? head : f + chunks[name] - 1n;
       ranges.push([f, to]);
       f = to + 1n;
@@ -91,7 +91,7 @@ type PoolInfo = { pool: string; token: string; is_token0: number };
 
 const SWEEP_BATCH = 20000;            // pools checked per scanner pass
 const SWEEP_EVERY_MS = 6 * 3_600_000; // re-check each pool's ETH every 6 hours
-const POOLS_PER_CALL = 300;
+const POOLS_PER_CALL = 1000;
 
 /** Pass 1: read the WETH in every pons pool. Pools with ETH left are "watched" (their trades get read). */
 async function sweepPools(db: DB) {
@@ -192,7 +192,7 @@ async function syncSwaps(db: DB, head: bigint) {
   const first = (db.prepare("SELECT MIN(launch_block) AS b FROM coins WHERE watched = 1").get() as { b: number }).b;
   await walk("swaps", BigInt(first), top, (from, to) => swapLogs(pools, from, to), (rows, _from, to) => {
     tx(db, () => { if (rows.length) applySwaps(db, rows, byPool, false); setCursor(db, "swaps", to); });
-  });
+  }, 3);
 }
 
 /** Pools that started being watched after the swap reader passed their launch get their older trades here. */
