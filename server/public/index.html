@@ -543,7 +543,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <div class="panel flow">
       <div class="node"><b>$NECRO trades</b><small>Every buy and sell pays a fee</small></div>
       <span class="arrow">→</span>
-      <div class="node"><b>Pump wallet</b><small>Fees are sent to a separate wallet that only the bot uses</small></div>
+      <div class="node"><b>Necro dev wallet → pump wallet</b><small>Fees land in the Necro dev wallet, then move to a separate wallet that only the bot uses</small></div>
       <span class="arrow">→</span>
       <div class="node"><b>Winning coin bought</b><small id="afterBuyText">Burned or held</small><span class="tbd" id="afterBuyTbd"><span class="pill">TBD</span><small>Decided before launch</small></span></div>
     </div>
@@ -566,7 +566,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       <details><summary>How are votes counted?</summary><p>Your vote is weighted by how much $NECRO you held when the round opened. Buying after the snapshot doesn't add weight until the next round.</p></details>
       <details><summary>Can the same coin win every hour?</summary><p>No. A winner sits out for 24 hours before it can return to the ballot.</p></details>
       <details><summary>Does a pump guarantee the coin goes up?</summary><p>No. It's a real buy, so it adds buying pressure, but the price after that depends on the market. Small funds mean small moves.</p></details>
-      <details><summary>Can I check where the money went?</summary><p>Yes. Every pump is listed in the Pump log with its transaction on the Robinhood Chain explorer. The pump wallet is public too: <span class="mono" id="pumpAddr">set at launch</span>.</p></details>
+      <details><summary>Can I check where the money went?</summary><p>Yes. Every pump is listed in the Pump log with its transaction on the Robinhood Chain explorer. Both wallets are public: the Necro dev wallet that collects the fees, <span class="mono" id="devAddr">set at launch</span>, and the pump wallet that makes the buys, <span class="mono" id="pumpAddr">set at launch</span>.</p></details>
       <details><summary>Which coins can be on the ballot?</summary><p>Coins launched on pons that peaked above $10K, then fell 90% or more and went quiet. pons pools are locked, so their liquidity can't be pulled.</p></details>
     </div>
   </section>
@@ -884,6 +884,7 @@ async function boot(){
     $("#afterBuyText").textContent=S.cfg.afterBuy==="burn"?"Burned forever, sent to the dead address":"Held in the public pump wallet";
     $("#afterBuyTbd").hidden=true;
     if(S.cfg.pumpWallet){$("#pumpAddr").textContent=S.cfg.pumpWallet}
+    if(S.cfg.devWallet){$("#devAddr").textContent=S.cfg.devWallet}
   }
   await loadRound();loadLog();
   route();tick();setInterval(tick,1000);

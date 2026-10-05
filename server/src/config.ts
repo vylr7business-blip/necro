@@ -17,14 +17,15 @@ export const CONFIG = {
   explorer: "https://robinhoodchain.blockscout.com",
   blockscoutApi: env("BLOCKSCOUT_API", "https://robinhoodchain.blockscout.com/api/v2")!,
 
-  // The dev wallet. Shown on the site so people can follow the money. The server never holds its key.
-  devWallet: env("DEV_WALLET", "0x4d3E32aA053582646Dd2b184c15960710Fb2e025") as Address,
+  // The Necro dev wallet: launches $NECRO and collects its creator fees. Shown on the site so people can follow the money.
+  // The server never holds its key.
+  devWallet: env("NECRO_DEV_WALLET", env("DEV_WALLET", "0x4d3E32aA053582646Dd2b184c15960710Fb2e025")) as Address,
 
   // $NECRO itself. Before launch voting runs in practice mode (1 wallet = 1 vote).
   necroToken: env("NECRO_TOKEN") as Address | undefined,
   necroStartBlock: BigInt(env("NECRO_START_BLOCK", "0")!),
 
-  // Secret key of the small PUMP wallet (never the dev wallet). The bot buys from this wallet.
+  // Secret key of the small PUMP wallet (never the Necro dev wallet). The bot buys from this wallet.
   // MetaMask exports the key without "0x", so add it if it's missing.
   pumpKey: (() => {
     const k = (env("PUMP_PRIVATE_KEY") ?? "").trim().replace(/^["']|["']$/g, "");

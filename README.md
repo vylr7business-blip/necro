@@ -25,7 +25,7 @@ All rule numbers are settings (see `server/.env.example`). The rule math lives i
 
 ## Safety built in
 
-- **Small hot wallet.** Only the pump wallet's key lives on the server. The dev wallet's key never does. You send fees to the pump wallet; the bot can only spend what's in it.
+- **Small hot wallet.** Only the pump wallet's key lives on the server. The Necro dev wallet's key never does. You send fees from the Necro dev wallet to the pump wallet; the bot can only spend what's in it.
 - **Off switch.** No buy is ever sent unless `PUMPS_ENABLED=1`.
 - **Caps.** At most `MAX_PUMP_ETH` per hour and `DAILY_PUMP_CAP_ETH` per UTC day. A gas reserve always stays behind.
 - **Slippage guard.** Each buy takes a fresh quote and refuses to fill more than 3% worse (`MAX_SLIPPAGE_BPS`).

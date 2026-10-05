@@ -142,7 +142,7 @@ export function createApi(db: DB) {
     res.json({
       rpc: head !== null ? { ok: true, block: head.toString() } : { ok: false, note: "RPC unreachable" },
       settings: {
-        DEV_WALLET: CONFIG.devWallet,
+        NECRO_DEV_WALLET: CONFIG.devWallet,
         NECRO_TOKEN: CONFIG.necroToken ?? "MISSING — $NECRO not launched yet, voting runs in practice mode (1 wallet = 1 vote)",
         PUMP_PRIVATE_KEY: pumpAccount ? `set (wallet ${pumpAccount.address})` : "MISSING — the pump bot is off",
         PUMPS_ENABLED: CONFIG.pumpsEnabled ? "on" : "off — the bot won't send any buys",
