@@ -120,7 +120,14 @@ async function syncSwaps(db: DB, head: bigint) {
 
 async function syncNecro(db: DB, head: bigint) {
   if (!CONFIG.necroToken) return;
-  await walk("necro", CONFIG.necroStartBlock, head, async (from, to) => {
+  // Start block: the setting if given, otherwise the launch block the scanner already recorded for $NECRO on pons.
+  let start = CONFIG.necroStartBlock;
+  if (start === 0n) {
+    const row = db.prepare("SELECT launch_block FROM coins WHERE token = ?").get(CONFIG.necroToken.toLowerCase()) as { launch_block: number } | undefined;
+    if (!row) return; // wait until the scanner has seen the launch
+    start = BigInt(row.launch_block);
+  }
+  await walk("necro", start, head, async (from, to) => {
     const logs = await publicClient.getLogs({ address: CONFIG.necroToken!, event: EVENTS.transfer, fromBlock: from, toBlock: to });
     tx(db, () => {
       const get = db.prepare("SELECT balance FROM necro_balances WHERE address = ?");
