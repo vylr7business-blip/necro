@@ -110,6 +110,19 @@ export function openDb(path: string): DB {
     CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, address TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
+  // v2: pool sweep. Only coins whose pool still holds ETH get their trade history read ("watched").
+  const cols = (db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).map((c) => c.name);
+  if (!cols.includes("watched")) {
+    db.exec(`
+      ALTER TABLE coins ADD COLUMN pool_eth REAL;
+      ALTER TABLE coins ADD COLUMN pool_checked_at INTEGER;
+      ALTER TABLE coins ADD COLUMN watched INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE coins ADD COLUMN backfill_to INTEGER;
+      CREATE INDEX IF NOT EXISTS coins_watched ON coins(watched);
+      CREATE INDEX IF NOT EXISTS coins_checked ON coins(pool_checked_at);
+      DELETE FROM hourly; DELETE FROM prices; DELETE FROM cursors WHERE name = 'swaps';
+    `);
+  }
   return db;
 }
 
