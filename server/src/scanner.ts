@@ -89,7 +89,7 @@ type Candle = { open: number; high: number; low: number; close: number; vol: num
 type SwapRow = { pool: string; sqrt: bigint | undefined; a0: bigint; a1: bigint; block: bigint; idx: number; at: number };
 type PoolInfo = { pool: string; token: string; is_token0: number };
 
-const SWEEP_BATCH = 8000;            // pools checked per scanner pass
+const SWEEP_BATCH = 20000;            // pools checked per scanner pass
 const SWEEP_EVERY_MS = 6 * 3_600_000; // re-check each pool's ETH every 6 hours
 const POOLS_PER_CALL = 300;
 
@@ -98,9 +98,22 @@ async function sweepPools(db: DB) {
   const due = db.prepare(`SELECT token, pool, launch_block FROM coins WHERE pool_checked_at IS NULL OR pool_checked_at < ?
                           ORDER BY pool_checked_at IS NOT NULL, pool_checked_at LIMIT ?`).all(Date.now() - SWEEP_EVERY_MS, SWEEP_BATCH) as Array<{ token: string; pool: string; launch_block: number }>;
   if (!due.length) return;
-  const bals: Array<bigint | null> = [];
-  for (let i = 0; i < due.length; i += 500) { // 500 reads at a time (10 batched requests), so the RPC isn't flooded
-    bals.push(...(await Promise.all(due.slice(i, i + 500).map((c) => publicClient.readContract({ address: ADDR.weth, abi: ABI.weth, functionName: "balanceOf", args: [c.pool as Address] }).catch(() => null)))));
+  // Multicall: 1,000 pool balances per request, 4 requests at a time.
+  const bals: Array<bigint | null> = new Array(due.length).fill(null);
+  const PER = 1000;
+  const parts: number[] = [];
+  for (let i = 0; i < due.length; i += PER) parts.push(i);
+  for (let k = 0; k < parts.length; k += 4) {
+    await Promise.all(parts.slice(k, k + 4).map(async (i) => {
+      const slice = due.slice(i, i + PER);
+      try {
+        const res = await publicClient.multicall({
+          contracts: slice.map((c) => ({ address: ADDR.weth, abi: ABI.weth, functionName: "balanceOf", args: [c.pool as Address] })),
+          allowFailure: true, batchSize: 0,
+        });
+        res.forEach((r: { status: string; result?: unknown }, j: number) => { if (r.status === "success") bals[i + j] = r.result as bigint; });
+      } catch (e) { console.warn(`[scanner] pool sweep request failed: ${(e as Error).message.split("\n")[0]}`); }
+    }));
   }
   const swapsAt = getCursor(db, "swaps");
   let added = 0;

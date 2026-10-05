@@ -8,6 +8,8 @@ export const robinhood = defineChain({
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [CONFIG.rpcUrl] } },
   blockExplorers: { default: { name: "Blockscout", url: CONFIG.explorer } },
+  // Multicall3 is deployed at its standard address on Robinhood Chain (checked Oct 2026).
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 });
 
 // batch: many small reads in one HTTP request, which keeps the scanner fast and polite to the RPC.
