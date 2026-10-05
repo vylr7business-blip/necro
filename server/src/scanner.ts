@@ -10,7 +10,8 @@ import { hourStart, priceFromSqrt, swapEth } from "./rules.js";
 import { alert } from "./alerts.js";
 
 const CONFIRMATIONS = 2n;
-const MIN_CHUNK = 500n, MAX_CHUNK = 500_000n;
+// Robinhood public RPC limits: a multi-address getLogs may span at most 100,000 blocks and 1,000 selectors (addresses + topic).
+const MIN_CHUNK = 500n, MAX_CHUNK = 100_000n;
 const PARALLEL = Number(process.env.SCAN_PARALLEL ?? 6);
 const chunks: Record<string, bigint> = {};
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -27,7 +28,7 @@ if (toEventSelector(EVENTS.swap) !== V3_SWAP_TOPIC) void alert("swap-topic", "Un
  */
 async function walk<T>(name: string, start: bigint, head: bigint, fetch: (from: bigint, to: bigint) => Promise<T>, commit: (data: T, from: bigint, to: bigint) => void, parallel = PARALLEL) {
   let from = (getCursor(db_(), name) ?? start - 1n) + 1n;
-  chunks[name] ??= 20_000n;
+  chunks[name] ??= MAX_CHUNK;
   while (from <= head) {
     const ranges: Array<[bigint, bigint]> = [];
     let f = from;
@@ -91,7 +92,7 @@ type PoolInfo = { pool: string; token: string; is_token0: number };
 
 const SWEEP_BATCH = 20000;            // pools checked per scanner pass
 const SWEEP_EVERY_MS = 6 * 3_600_000; // re-check each pool's ETH every 6 hours
-const POOLS_PER_CALL = 1000;
+const POOLS_PER_CALL = 999; // + the Swap topic = 1,000 selectors, the RPC maximum
 
 /** Pass 1: read the WETH in every pons pool. Pools with ETH left are "watched" (their trades get read). */
 async function sweepPools(db: DB) {
@@ -192,7 +193,7 @@ async function syncSwaps(db: DB, head: bigint) {
   const first = (db.prepare("SELECT MIN(launch_block) AS b FROM coins WHERE watched = 1").get() as { b: number }).b;
   await walk("swaps", BigInt(first), top, (from, to) => swapLogs(pools, from, to), (rows, _from, to) => {
     tx(db, () => { if (rows.length) applySwaps(db, rows, byPool, false); setCursor(db, "swaps", to); });
-  }, 3);
+  }, 6);
 }
 
 /** Pools that started being watched after the swap reader passed their launch get their older trades here. */
