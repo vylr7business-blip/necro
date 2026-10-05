@@ -10,7 +10,8 @@ import { hourStart, priceFromSqrt, swapEth } from "./rules.js";
 import { alert } from "./alerts.js";
 
 const CONFIRMATIONS = 2n;
-const MIN_CHUNK = 500n, MAX_CHUNK = 200_000n;
+const MIN_CHUNK = 500n, MAX_CHUNK = 500_000n;
+const PARALLEL = Number(process.env.SCAN_PARALLEL ?? 6);
 const chunks: Record<string, bigint> = {};
 const ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -20,24 +21,39 @@ if (toEventSelector(EVENTS.ponsLaunched) !== PONS_LAUNCH_TOPIC) {
 }
 if (toEventSelector(EVENTS.swap) !== V3_SWAP_TOPIC) void alert("swap-topic", "Uniswap Swap topic mismatch.");
 
-/** Walk [from, head] in block ranges that shrink when the RPC complains and grow when it doesn't. */
-async function walk(name: string, start: bigint, head: bigint, step: (from: bigint, to: bigint) => Promise<void>) {
+/**
+ * Walk [from, head] in block ranges. Several ranges are fetched at once (PARALLEL), then saved strictly in order,
+ * so the saved cursor never skips anything. Ranges shrink when the RPC complains and grow when it doesn't.
+ */
+async function walk<T>(name: string, start: bigint, head: bigint, fetch: (from: bigint, to: bigint) => Promise<T>, commit: (data: T, from: bigint, to: bigint) => void) {
   let from = (getCursor(db_(), name) ?? start - 1n) + 1n;
   chunks[name] ??= 20_000n;
   while (from <= head) {
-    const to = from + chunks[name] - 1n > head ? head : from + chunks[name] - 1n;
-    try {
-      await step(from, to);
-    } catch (e) {
+    const ranges: Array<[bigint, bigint]> = [];
+    let f = from;
+    for (let i = 0; i < PARALLEL && f <= head; i++) {
+      const to = f + chunks[name] - 1n > head ? head : f + chunks[name] - 1n;
+      ranges.push([f, to]);
+      f = to + 1n;
+    }
+    const results = await Promise.allSettled(ranges.map(([a, b]) => fetch(a, b)));
+    let failed: unknown = null;
+    for (let i = 0; i < ranges.length; i++) {
+      const r = results[i];
+      if (r.status === "rejected") { failed = r.reason; break; }
+      commit(r.value, ranges[i][0], ranges[i][1]);
+      from = ranges[i][1] + 1n;
+    }
+    if (failed) {
       if (chunks[name] > MIN_CHUNK) {
         chunks[name] /= 2n;
-        console.warn(`[scanner] ${name}: range too big, trying ${chunks[name]} blocks (${(e as Error).message.split("\n")[0]})`);
+        console.warn(`[scanner] ${name}: range too big, trying ${chunks[name]} blocks (${(failed as Error).message?.split("\n")[0]})`);
         continue;
       }
-      throw e;
+      throw failed;
     }
-    from = to + 1n;
     if (chunks[name] < MAX_CHUNK) chunks[name] += chunks[name] / 4n;
+    if (name !== "necro") console.log(`[scanner] ${name} at block ${from - 1n} of ${head}`);
   }
 }
 let _db: DB;
@@ -45,27 +61,27 @@ const db_ = () => _db;
 
 async function syncLaunches(db: DB, head: bigint) {
   const start = PONS_FACTORIES.reduce((m, f) => (f.startBlock < m ? f.startBlock : m), PONS_FACTORIES[0].startBlock);
+  const weth = ADDR.weth.toLowerCase();
   await walk("launches", start, head, async (from, to) => {
     const logs = await publicClient.getLogs({ address: PONS_FACTORIES.map((f) => f.address), event: EVENTS.ponsLaunched, fromBlock: from, toBlock: to });
-    const weth = ADDR.weth.toLowerCase();
     const fresh = logs.filter((l) => l.args.pairToken?.toLowerCase() === weth && l.args.token && l.args.pool);
     const clock = fresh.length ? await blockClock(from, to) : null;
-    const rows = fresh.map((l) => {
+    return fresh.map((l) => {
       const token = (l.args.token! as string).toLowerCase();
       return {
         token, pool: l.args.pool!.toLowerCase(), deployer: l.args.deployer!.toLowerCase(),
         initialBuy: (l.args.initialBuyAmount ?? 0n).toString(), isToken0: token < weth ? 1 : 0,
-        symbol: null, name: null, supply: (10n ** 27n).toString(), // pons supply is fixed at 1,000,000,000 tokens
+        supply: (10n ** 27n).toString(), // pons supply is fixed at 1,000,000,000 tokens
         block: Number(l.blockNumber), at: clock!(l.blockNumber!),
       };
     });
+  }, (rows, _from, to) => {
     tx(db, () => {
       const ins = db.prepare(`INSERT OR IGNORE INTO coins (token, pool, deployer, initial_buy, is_token0, symbol, name, supply, launch_block, launch_at)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-      for (const r of rows) ins.run(r.token, r.pool, r.deployer, r.initialBuy, r.isToken0, r.symbol, r.name, r.supply, r.block, r.at);
+                              VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`);
+      for (const r of rows) ins.run(r.token, r.pool, r.deployer, r.initialBuy, r.isToken0, r.supply, r.block, r.at);
       setCursor(db, "launches", to);
     });
-    if (rows.length) console.log(`[scanner] +${rows.length} coin(s) up to block ${to}`);
   });
 }
 
@@ -83,19 +99,20 @@ async function syncSwaps(db: DB, head: bigint) {
   await walk("swaps", first, top, async (from, to) => {
     // One request for every Uniswap v3 swap in the range, filtered here. Scales with trades, not with coin count.
     const all = (await publicClient.getLogs({ event: EVENTS.swap, fromBlock: from, toBlock: to })).filter((l) => byPool.has(l.address.toLowerCase()));
+    const clock = all.length ? await blockClock(from, to) : null;
+    return all.map((l) => ({ pool: l.address.toLowerCase(), sqrt: l.args.sqrtPriceX96, a0: l.args.amount0 ?? 0n, a1: l.args.amount1 ?? 0n, block: l.blockNumber!, idx: l.logIndex!, at: clock!(l.blockNumber!) }));
+  }, (all, _from, to) => {
     if (!all.length) { setCursor(db, "swaps", to); return; }
-    all.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex! - b.logIndex! : a.blockNumber! < b.blockNumber! ? -1 : 1));
-    const clock = await blockClock(from, to);
+    all.sort((a, b) => (a.block === b.block ? a.idx - b.idx : a.block < b.block ? -1 : 1));
     const candles = new Map<string, Candle & { token: string; hour: number }>();
     const last = new Map<string, { price: number; at: number }>();
     const getRow = db.prepare("SELECT open, high, low, close, vol_eth AS vol, swaps FROM hourly WHERE token = ? AND hour = ?");
     for (const l of all) {
-      const p = byPool.get(l.address.toLowerCase());
-      if (!p || l.args.sqrtPriceX96 === undefined) continue;
-      const price = priceFromSqrt(l.args.sqrtPriceX96, p.is_token0 === 1);
-      const eth = swapEth(l.args.amount0 ?? 0n, l.args.amount1 ?? 0n, p.is_token0 === 1);
-      const at = clock(l.blockNumber!);
-      const hour = hourStart(at);
+      const p = byPool.get(l.pool);
+      if (!p || l.sqrt === undefined) continue;
+      const price = priceFromSqrt(l.sqrt, p.is_token0 === 1);
+      const eth = swapEth(l.a0, l.a1, p.is_token0 === 1);
+      const hour = hourStart(l.at);
       const key = `${p.token}|${hour}`;
       let c = candles.get(key);
       if (!c) {
@@ -104,7 +121,7 @@ async function syncSwaps(db: DB, head: bigint) {
         candles.set(key, c);
       }
       c.high = Math.max(c.high, price); c.low = Math.min(c.low, price); c.close = price; c.vol += eth; c.swaps += 1;
-      last.set(p.token, { price, at });
+      last.set(p.token, { price, at: l.at });
     }
     tx(db, () => {
       const up = db.prepare(`INSERT INTO hourly (token, hour, open, high, low, close, vol_eth, swaps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -127,8 +144,9 @@ async function syncNecro(db: DB, head: bigint) {
     if (!row) return; // wait until the scanner has seen the launch
     start = BigInt(row.launch_block);
   }
-  await walk("necro", start, head, async (from, to) => {
-    const logs = await publicClient.getLogs({ address: CONFIG.necroToken!, event: EVENTS.transfer, fromBlock: from, toBlock: to });
+  await walk("necro", start, head,
+    (from, to) => publicClient.getLogs({ address: CONFIG.necroToken!, event: EVENTS.transfer, fromBlock: from, toBlock: to }) as Promise<Array<{ args: { from?: string; to?: string; value?: bigint } }>>,
+    (logs, _from, to) => {
     tx(db, () => {
       const get = db.prepare("SELECT balance FROM necro_balances WHERE address = ?");
       const set = db.prepare("INSERT INTO necro_balances (address, balance) VALUES (?, ?) ON CONFLICT(address) DO UPDATE SET balance = excluded.balance");
