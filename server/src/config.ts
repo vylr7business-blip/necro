@@ -19,11 +19,11 @@ export const CONFIG = {
 
   // The Necro dev wallet: launches $NECRO and collects its creator fees. Shown on the site so people can follow the money.
   // The server never holds its key.
-  devWallet: env("NECRO_DEV_WALLET", env("DEV_WALLET", "0x4d3E32aA053582646Dd2b184c15960710Fb2e025")) as Address,
+  devWallet: env("NECRO_DEV_WALLET", env("DEV_WALLET", "0x5530772Ea031e749213EDc0414C0cB3c01a422DA")) as Address,
 
   // $NECRO itself. Before launch voting runs in practice mode (1 wallet = 1 vote).
-  necroToken: env("NECRO_TOKEN") as Address | undefined,
-  necroStartBlock: BigInt(env("NECRO_START_BLOCK", "0")!),
+  necroToken: env("NECRO_TOKEN", "0x1beede8d71b816fa19f13041ebd273e1e9610c74") as Address | undefined, // $NECRO "The Graveyard" on pons v2
+  necroStartBlock: BigInt(env("NECRO_START_BLOCK", "81070539")!), // launch block
 
   // Secret key of the small PUMP wallet (never the Necro dev wallet). The bot buys from this wallet.
   // MetaMask exports the key without "0x", so add it if it's missing.
