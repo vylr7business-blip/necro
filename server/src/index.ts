@@ -6,6 +6,7 @@ import { startGraves } from "./graves.js";
 import { startRounds } from "./rounds.js";
 import { startPump } from "./pump.js";
 import { startGecko } from "./gecko.js";
+import { startPons } from "./pons.js";
 import { ethUsd } from "./prices.js";
 
 // Modes: "api" (website + API), "worker" (scanner, graveyard, rounds, pump bot), "all" (both, one process).
@@ -17,6 +18,7 @@ if (mode === "api" || mode === "all") {
 }
 if (mode === "worker" || mode === "all") {
   startScanner(db);
+  startPons(db, ethUsd);
   startGecko(db, ethUsd);
   startGraves(db);
   startRounds(db);

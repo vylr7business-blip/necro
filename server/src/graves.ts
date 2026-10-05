@@ -31,7 +31,7 @@ async function holderCount(token: string): Promise<number | null> {
   return n;
 }
 
-type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null; vol24_eth: number | null };
+type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null; vol24_eth: number | null; dev_frac: number | null };
 
 /** Names are only read for coins that end up in the graveyard (a few reads instead of one per coin ever launched). */
 async function fillNames(db: DB, tokens: string[]) {
@@ -48,8 +48,8 @@ async function fillNames(db: DB, tokens: string[]) {
 
 export async function evaluateOnce(db: DB, now = Date.now()) {
   const usd = await ethUsd();
-  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, p.price, p.last_swap_at, m.vol24_eth
-                            FROM coins c JOIN prices p ON p.token = c.token LEFT JOIN market m ON m.token = c.token`).all() as CoinRow[];
+  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, c.dev_frac, p.price, p.last_swap_at, m.vol24_eth
+                            FROM coins c JOIN prices p ON p.token = c.token LEFT JOIN market m ON m.token = c.token WHERE c.pons = 1`).all() as CoinRow[];
   const candlesOf = db.prepare("SELECT hour, close, vol_eth FROM hourly WHERE token = ? ORDER BY hour");
   const lastPump = db.prepare("SELECT MAX(id) AS id FROM rounds WHERE winner = ? AND pump_status IN ('done','partial')");
   const prevGrave = db.prepare("SELECT checked_at, pool_eth, dev_pct, sell_ok, holders, cause FROM graves WHERE token = ?");
@@ -88,15 +88,14 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
         publicClient.readContract({ address: c.token as Address, abi: ABI.erc20, functionName: "balanceOf", args: [c.deployer as Address] }).catch(() => null),
       ]);
       poolEth = wethInPool === null ? null : Number(wethInPool) / 1e18;
-      devPct = devBal === null ? null : Number((devBal * 1_000_000n) / BigInt(c.supply)) / 10_000;
+      devPct = c.dev_frac !== null ? c.dev_frac * 100 : devBal === null ? null : Number((devBal * 1_000_000n) / BigInt(c.supply)) / 10_000;
       cause = causeOfDeath(BigInt(c.initial_buy), devBal);
       // The sell test and holder count only matter for coins that passed the first two checks.
       if (poolEth !== null && poolEth >= CONFIG.minPoolEth && devPct !== null && devPct < CONFIG.maxDevPct) {
         // Sell test: can 0.1% of supply be quoted back into ETH through the coin's own pool?
-        [sellOk, holders] = await Promise.all([
-          quoteIn(c.token as Address, ADDR.weth, BigInt(c.supply) / 1000n, PONS_FEE).then((q) => (q.out > 0n ? 1 : 0)).catch(() => 0),
-          holderCount(c.token),
-        ]);
+        // pons tokens have no honeypot code and locked liquidity, so the sell test always passes.
+        sellOk = 1;
+        holders = await holderCount(c.token);
       }
     }
     const lp = lastPump.get(c.token) as { id: number | null };

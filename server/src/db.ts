@@ -136,11 +136,16 @@ export function openDb(path: string): DB {
   }
   // v4: prices and history come from GeckoTerminal; old swap-based data is cleared once.
   const ver = (db.prepare("SELECT value FROM kv WHERE key = 'schema'").get() as { value: string } | undefined)?.value;
-  if (ver !== "4") {
+  if (!(db.prepare("PRAGMA table_info(coins)").all() as Array<{ name: string }>).some((c) => c.name === "pons")) {
+    db.exec("ALTER TABLE coins ADD COLUMN pons INTEGER NOT NULL DEFAULT 0; ALTER TABLE coins ADD COLUMN dev_frac REAL;");
+  }
+  if (ver !== "5") {
     db.exec(`
       DELETE FROM hourly; DELETE FROM prices; DELETE FROM graves; DELETE FROM cursors WHERE name = 'swaps';
       UPDATE coins SET backfill_to = NULL;
-      INSERT INTO kv (key, value) VALUES ('schema', '4') ON CONFLICT(key) DO UPDATE SET value = '4';
+      UPDATE coins SET watched = 0;
+      DELETE FROM market;
+      INSERT INTO kv (key, value) VALUES ('schema', '5') ON CONFLICT(key) DO UPDATE SET value = '5';
     `);
   }
   return db;

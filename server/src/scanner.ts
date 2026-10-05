@@ -268,7 +268,7 @@ export async function scanOnce(db: DB) {
   _db = db;
   const head = (await publicClient.getBlockNumber()) - CONFIRMATIONS;
   await syncLaunches(db, head);
-  await sweepPools(db);
+  // The coin list now comes from pons's graduated catalog (pons.ts), so the pool sweep is off.
   // Trade history now comes from GeckoTerminal (gecko.ts). Reading every swap from the public RPC was too slow at this chain's volume.
   await syncNecro(db, head);
   return head;
