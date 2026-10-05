@@ -10,7 +10,6 @@ import { hourStart, priceFromSqrt, swapEth } from "./rules.js";
 import { alert } from "./alerts.js";
 
 const CONFIRMATIONS = 2n;
-const POOLS_PER_CALL = 400;
 const MIN_CHUNK = 500n, MAX_CHUNK = 200_000n;
 const chunks: Record<string, bigint> = {};
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -51,20 +50,15 @@ async function syncLaunches(db: DB, head: bigint) {
     const weth = ADDR.weth.toLowerCase();
     const fresh = logs.filter((l) => l.args.pairToken?.toLowerCase() === weth && l.args.token && l.args.pool);
     const clock = fresh.length ? await blockClock(from, to) : null;
-    const rows = await Promise.all(fresh.map(async (l) => {
-      const token = l.args.token! as Address;
-      const [symbol, name, supply] = await Promise.all([
-        publicClient.readContract({ address: token, abi: ABI.erc20, functionName: "symbol" }).catch(() => null),
-        publicClient.readContract({ address: token, abi: ABI.erc20, functionName: "name" }).catch(() => null),
-        publicClient.readContract({ address: token, abi: ABI.erc20, functionName: "totalSupply" }).catch(() => 10n ** 27n),
-      ]);
+    const rows = fresh.map((l) => {
+      const token = (l.args.token! as string).toLowerCase();
       return {
-        token: token.toLowerCase(), pool: l.args.pool!.toLowerCase(), deployer: l.args.deployer!.toLowerCase(),
-        initialBuy: (l.args.initialBuyAmount ?? 0n).toString(), isToken0: token.toLowerCase() < weth ? 1 : 0,
-        symbol: symbol ? String(symbol).slice(0, 24) : null, name: name ? String(name).slice(0, 64) : null,
-        supply: supply.toString(), block: Number(l.blockNumber), at: clock!(l.blockNumber!),
+        token, pool: l.args.pool!.toLowerCase(), deployer: l.args.deployer!.toLowerCase(),
+        initialBuy: (l.args.initialBuyAmount ?? 0n).toString(), isToken0: token < weth ? 1 : 0,
+        symbol: null, name: null, supply: (10n ** 27n).toString(), // pons supply is fixed at 1,000,000,000 tokens
+        block: Number(l.blockNumber), at: clock!(l.blockNumber!),
       };
-    }));
+    });
     tx(db, () => {
       const ins = db.prepare(`INSERT OR IGNORE INTO coins (token, pool, deployer, initial_buy, is_token0, symbol, name, supply, launch_block, launch_at)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -84,12 +78,11 @@ async function syncSwaps(db: DB, head: bigint) {
   const pools = db.prepare("SELECT pool, token, is_token0 FROM coins").all() as Array<{ pool: string; token: string; is_token0: number }>;
   if (!pools.length) { setCursor(db, "swaps", top); return; }
   const byPool = new Map(pools.map((p) => [p.pool, p]));
-  const groups: Address[][] = [];
-  for (let i = 0; i < pools.length; i += POOLS_PER_CALL) groups.push(pools.slice(i, i + POOLS_PER_CALL).map((p) => p.pool as Address));
   const first = PONS_FACTORIES.reduce((m, f) => (f.startBlock < m ? f.startBlock : m), PONS_FACTORIES[0].startBlock);
 
   await walk("swaps", first, top, async (from, to) => {
-    const all = (await Promise.all(groups.map((address) => publicClient.getLogs({ address, event: EVENTS.swap, fromBlock: from, toBlock: to })))).flat();
+    // One request for every Uniswap v3 swap in the range, filtered here. Scales with trades, not with coin count.
+    const all = (await publicClient.getLogs({ event: EVENTS.swap, fromBlock: from, toBlock: to })).filter((l) => byPool.has(l.address.toLowerCase()));
     if (!all.length) { setCursor(db, "swaps", to); return; }
     all.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex! - b.logIndex! : a.blockNumber! < b.blockNumber! ? -1 : 1));
     const clock = await blockClock(from, to);

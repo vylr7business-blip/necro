@@ -31,12 +31,25 @@ async function holderCount(token: string): Promise<number | null> {
   return n;
 }
 
-type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null };
+type CoinRow = { token: string; pool: string; deployer: string; initial_buy: string; supply: string; price: number | null; last_swap_at: number | null; symbol: string | null };
+
+/** Names are only read for coins that end up in the graveyard (a few reads instead of one per coin ever launched). */
+async function fillNames(db: DB, tokens: string[]) {
+  const named = await Promise.all(tokens.map(async (t) => {
+    const [symbol, name] = await Promise.all([
+      publicClient.readContract({ address: t as Address, abi: ABI.erc20, functionName: "symbol" }).catch(() => null),
+      publicClient.readContract({ address: t as Address, abi: ABI.erc20, functionName: "name" }).catch(() => null),
+    ]);
+    return { t, symbol: symbol ? String(symbol).slice(0, 24) : "?", name: name ? String(name).slice(0, 64) : null };
+  }));
+  const up = db.prepare("UPDATE coins SET symbol = ?, name = ? WHERE token = ?");
+  tx(db, () => { for (const n of named) up.run(n.symbol, n.name, n.t); });
+}
 
 export async function evaluateOnce(db: DB, now = Date.now()) {
   const usd = await ethUsd();
-  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, p.price, p.last_swap_at
-                            FROM coins c LEFT JOIN prices p ON p.token = c.token`).all() as CoinRow[];
+  const coins = db.prepare(`SELECT c.token, c.pool, c.deployer, c.initial_buy, c.supply, c.symbol, p.price, p.last_swap_at
+                            FROM coins c JOIN prices p ON p.token = c.token`).all() as CoinRow[];
   const candlesOf = db.prepare("SELECT hour, close, vol_eth FROM hourly WHERE token = ? ORDER BY hour");
   const lastPump = db.prepare("SELECT MAX(id) AS id FROM rounds WHERE winner = ? AND pump_status IN ('done','partial')");
   const prevGrave = db.prepare("SELECT checked_at, pool_eth, dev_pct, sell_ok, holders, cause FROM graves WHERE token = ?");
@@ -44,6 +57,7 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
   type Out = { token: string; status: string; why: string; cause: string; score: number; parts: string; peakUsd: number; nowUsd: number; peakAt: number; diedAt: number | null; poolEth: number | null; devPct: number | null; holders: number | null; sellOk: number | null; checkedAt: number };
   const out: Out[] = [];
   const alive: string[] = [];
+  const unnamed: string[] = [];
 
   for (const c of coins) {
     if (c.price === null) continue; // never traded
@@ -53,6 +67,7 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
     const peakUsd = life.peak * supply * usd, nowUsd = life.now * supply * usd;
     const vol24 = candles.filter((x) => x.hour >= now - DAY).reduce((a, x) => a + x.vol_eth, 0);
     if (!isBuried({ peakUsd, nowUsd, vol24hEth: vol24 }, RULES)) { alive.push(c.token); continue; }
+    if (c.symbol === null) unnamed.push(c.token);
     const vol7d = candles.filter((x) => x.hour >= now - 7 * DAY).reduce((a, x) => a + x.vol_eth, 0);
     const diedAt = life.diedAt ?? c.last_swap_at;
 
@@ -78,6 +93,8 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
     const s = revivalScore({ poolEth: poolEth ?? 0, holders, devPct: devPct ?? CONFIG.maxDevPct, deadDays: diedAt ? (now - diedAt) / DAY : 0, vol7dEth: vol7d }, RULES);
     out.push({ token: c.token, status: v.status, why: v.why, cause, score: s.total, parts: JSON.stringify(s.parts), peakUsd, nowUsd, peakAt: life.peakAt, diedAt, poolEth, devPct, holders, sellOk, checkedAt });
   }
+
+  for (let i = 0; i < unnamed.length; i += 100) await fillNames(db, unnamed.slice(i, i + 100));
 
   tx(db, () => {
     const up = db.prepare(`INSERT INTO graves (token, status, why, cause, score, parts, peak_usd, now_usd, peak_at, died_at, pool_eth, dev_pct, holders, sell_ok, checked_at)
