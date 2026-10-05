@@ -138,7 +138,12 @@ export function createApi(db: DB) {
   // Every setting, shown as set or missing. A missing setting is shown as missing, never as green.
   app.get("/api/status", wrap(async (_req, res) => {
     const head = await publicClient.getBlockNumber().catch(() => null);
-    const counts = db.prepare("SELECT (SELECT COUNT(*) FROM coins) AS coins, (SELECT COUNT(*) FROM graves) AS graves, (SELECT COUNT(*) FROM graves WHERE status='ok') AS revivable").get();
+    const counts = db.prepare(`SELECT (SELECT COUNT(*) FROM coins) AS coins,
+      (SELECT COUNT(*) FROM coins WHERE pool_checked_at IS NOT NULL) AS poolsChecked,
+      (SELECT COUNT(*) FROM coins WHERE watched = 1) AS poolsWithEth,
+      (SELECT COUNT(*) FROM coins WHERE backfill_to IS NOT NULL) AS backfillQueue,
+      (SELECT COUNT(*) FROM prices) AS coinsWithTrades,
+      (SELECT COUNT(*) FROM graves) AS graves, (SELECT COUNT(*) FROM graves WHERE status='ok') AS revivable`).get();
     res.json({
       rpc: head !== null ? { ok: true, block: head.toString() } : { ok: false, note: "RPC unreachable" },
       settings: {
