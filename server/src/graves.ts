@@ -59,6 +59,8 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
   const alive: string[] = [];
   const unnamed: string[] = [];
 
+  type Base = { c: CoinRow; life: ReturnType<typeof lifeOf>; peakUsd: number; nowUsd: number; vol7d: number; diedAt: number | null };
+  const buried: Base[] = [];
   for (const c of coins) {
     if (c.price === null) continue; // never traded
     const candles = candlesOf.all(c.token) as Candle[];
@@ -69,9 +71,12 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
     if (!isBuried({ peakUsd, nowUsd, vol24hEth: vol24 }, RULES)) { alive.push(c.token); continue; }
     if (c.symbol === null) unnamed.push(c.token);
     const vol7d = candles.filter((x) => x.hour >= now - 7 * DAY).reduce((a, x) => a + x.vol_eth, 0);
-    const diedAt = life.diedAt ?? c.last_swap_at;
+    buried.push({ c, life, peakUsd, nowUsd, vol7d, diedAt: life.diedAt ?? c.last_swap_at });
+  }
 
-    // Chain checks are the slow part, so reuse them for a while.
+  // Chain checks are the slow part: reuse them for 30 minutes, and run 25 coins at a time.
+  async function judge(b: Base): Promise<Out> {
+    const { c, life, peakUsd, nowUsd, vol7d, diedAt } = b;
     const prev = prevGrave.get(c.token) as { checked_at: number; pool_eth: number | null; dev_pct: number | null; sell_ok: number | null; holders: number | null; cause: string } | undefined;
     let checkedAt = prev?.checked_at ?? now;
     let poolEth = prev?.pool_eth ?? null, devPct = prev?.dev_pct ?? null, sellOk: number | null = prev?.sell_ok ?? null, holders = prev?.holders ?? null, cause = prev?.cause ?? "fade";
@@ -84,15 +89,21 @@ export async function evaluateOnce(db: DB, now = Date.now()) {
       poolEth = wethInPool === null ? null : Number(wethInPool) / 1e18;
       devPct = devBal === null ? null : Number((devBal * 1_000_000n) / BigInt(c.supply)) / 10_000;
       cause = causeOfDeath(BigInt(c.initial_buy), devBal);
-      // Sell test: can 0.1% of supply be quoted back into ETH through the coin's own pool?
-      sellOk = await quoteIn(c.token as Address, ADDR.weth, BigInt(c.supply) / 1000n, PONS_FEE).then((q) => (q.out > 0n ? 1 : 0)).catch(() => 0);
-      holders = await holderCount(c.token);
+      // The sell test and holder count only matter for coins that passed the first two checks.
+      if (poolEth !== null && poolEth >= CONFIG.minPoolEth && devPct !== null && devPct < CONFIG.maxDevPct) {
+        // Sell test: can 0.1% of supply be quoted back into ETH through the coin's own pool?
+        [sellOk, holders] = await Promise.all([
+          quoteIn(c.token as Address, ADDR.weth, BigInt(c.supply) / 1000n, PONS_FEE).then((q) => (q.out > 0n ? 1 : 0)).catch(() => 0),
+          holderCount(c.token),
+        ]);
+      }
     }
     const lp = lastPump.get(c.token) as { id: number | null };
     const v = revivable({ poolEth, devPct, sellOk: sellOk === null ? null : sellOk === 1, diedAt, lastPumpAt: lp.id ? (lp.id + 1) * HOUR : null }, now, RULES);
     const s = revivalScore({ poolEth: poolEth ?? 0, holders, devPct: devPct ?? CONFIG.maxDevPct, deadDays: diedAt ? (now - diedAt) / DAY : 0, vol7dEth: vol7d }, RULES);
-    out.push({ token: c.token, status: v.status, why: v.why, cause, score: s.total, parts: JSON.stringify(s.parts), peakUsd, nowUsd, peakAt: life.peakAt, diedAt, poolEth, devPct, holders, sellOk, checkedAt });
+    return { token: c.token, status: v.status, why: v.why, cause, score: s.total, parts: JSON.stringify(s.parts), peakUsd, nowUsd, peakAt: life.peakAt, diedAt, poolEth, devPct, holders, sellOk, checkedAt };
   }
+  for (let i = 0; i < buried.length; i += 25) out.push(...(await Promise.all(buried.slice(i, i + 25).map(judge))));
 
   for (let i = 0; i < unnamed.length; i += 100) await fillNames(db, unnamed.slice(i, i + 100));
 
